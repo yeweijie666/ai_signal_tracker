@@ -57,6 +57,34 @@ NEWSLETTERS = [
     ("Interconnects (Nathan Lambert)", "Newsletter", "https://www.interconnects.ai/rss.xml", "rss"),
 ]
 
+# ---- 每日 RSS 综合（原 fluent-tools 每日 RSS 日报信源，已并入本系统统一抓取/邮件）----
+# 取自 fluent-tools/feeds.json；分类沿用原体系：国际/地缘、财经/市场、AI/科技、游戏/娱乐、数码/消费/文化。
+# 注：量子位已存在于 CN_FEEDS，此处不再重复；sub 统一标记为「每日RSS」便于看板/邮件区分来源。
+RSS_DIGEST_FEEDS = [
+    # name, category, sub, url, type
+    ("少数派", "AI/科技", "每日RSS", "https://sspai.com/feed", "rss"),
+    ("爱范儿", "AI/科技", "每日RSS", "https://www.ifanr.com/feed", "rss"),
+    ("忽左忽右中国版", "游戏/娱乐", "每日RSS", "https://www.ximalaya.com/album/12817863.xml", "rss"),
+    ("机核", "游戏/娱乐", "每日RSS", "https://www.gcores.com/rss", "rss"),
+    ("虎嗅网", "数码/消费/文化", "每日RSS", "https://rss.huxiu.com/", "rss"),
+    ("今日话题 - 雪球", "财经/市场", "每日RSS", "https://xueqiu.com/hots/topic/rss", "rss"),
+    ("36氪", "财经/市场", "每日RSS", "https://36kr.com/feed", "rss"),
+    ("AI洞察日报", "AI/科技", "每日RSS", "https://justlovemaki.github.io/CloudFlare-AI-Insight-Daily/rss.xml", "rss"),
+    ("华尔街见闻", "财经/市场", "每日RSS", "http://dedicated.wallstreetcn.com/rss.xml", "rss"),
+    ("BMPI", "AI/科技", "每日RSS", "https://www.bmpi.dev/index.xml", "rss"),
+    ("联合早报·国际即时", "国际/地缘", "每日RSS", "https://plink.anyfeeder.com/zaobao/realtime/world", "rss"),
+    ("雪球精华", "财经/市场", "每日RSS", "https://plink.anyfeeder.com/weixin/xueqiujinghua", "rss"),
+    ("第一财经周刊", "财经/市场", "每日RSS", "https://plink.anyfeeder.com/weixin/CBNweekly2008", "rss"),
+    ("iDaily·每日环球视野", "数码/消费/文化", "每日RSS", "https://plink.anyfeeder.com/idaily/today", "rss"),
+    ("历史研习社", "数码/消费/文化", "每日RSS", "https://plink.anyfeeder.com/weixin/mingqinghistory", "rss"),
+    ("三联生活周刊", "数码/消费/文化", "每日RSS", "https://plink.anyfeeder.com/weixin/lifeweek", "rss"),
+    ("ONES Piece", "数码/消费/文化", "每日RSS", "https://rss.lilydjwg.me/zhihuzhuanlan/onespiece", "rss"),
+    ("FT中文网", "AI/科技", "每日RSS", "http://www.ftchinese.com/rss/feed", "rss"),
+    ("奇客Solidot", "AI/科技", "每日RSS", "https://www.solidot.org/index.rss", "rss"),
+    ("知乎日报", "数码/消费/文化", "每日RSS", "https://plink.anyfeeder.com/zhihu/daily", "rss"),
+    ("律动BlockBeats", "财经/市场", "每日RSS", "https://api.theblockbeats.news/feed.xml", "rss"),
+]
+
 # ---- RSS：Karpathy 92 源 OPML（首次运行自动展开为多个 RSS）----
 KARPATHY_OPML = "https://t.co/dwAiIjlXet"
 
