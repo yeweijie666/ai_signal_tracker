@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI 硬核信源 · 时间线看板</title>
+<script src="https://cdn.jsdelivr.net/npm/@mozilla/readability@0.5.0/Readability.min.js"></script>
 <style>
   :root{
     --bg:#f4f5f7; --card:#fff; --ink:#1f2329; --sub:#6b7280; --line:#e6e8eb;
@@ -16,9 +17,9 @@
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{background:var(--bg);color:var(--ink);font-family:-apple-system,"PingFang SC","Microsoft YaHei",Segoe UI,sans-serif;font-size:14px;line-height:1.55}
-  /* 布局：左侧栏 + 右侧主区 */
+  /* 布局：左菜单栏 + 中文章列表 + 右正文，分隔条可拖动 */
   #app{display:flex;height:100vh;overflow:hidden}
-  aside{width:268px;flex:0 0 268px;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+  aside{width:268px;flex:0 0 auto;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
   aside .brand{padding:13px 15px;font-weight:800;font-size:15px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
   aside .brand small{font-weight:500;color:var(--sub);font-size:11px}
   #tree{flex:1;overflow-y:auto;padding:8px 8px 24px}
@@ -95,19 +96,49 @@
   .drop{margin:20px auto;max-width:520px;border:2px dashed var(--line);border-radius:12px;padding:26px;text-align:center;color:var(--sub);cursor:pointer}
   .drop:hover{border-color:var(--accent);color:var(--accent)}
   .foot{color:var(--sub);font-size:12px;text-align:center;padding:16px}
+  /* 三栏：左菜单(可拖动) / 中列表 / 右阅读(可拖动) */
+  #gutter,#gutter2{width:6px;flex:0 0 6px;cursor:col-resize;background:transparent;position:relative;z-index:6;transition:background .15s}
+  #gutter:hover,#gutter2:hover,#gutter.drag,#gutter2.drag{background:var(--accent)}
+  #listpane{flex:1 1 auto;min-width:260px;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+  #contentpane{flex:0 0 440px;display:flex;flex-direction:column;background:var(--card);border-left:1px solid var(--line);overflow:hidden}
+  body.resizing{cursor:col-resize!important;user-select:none!important}
+  .item.active3{outline:2px solid var(--accent);outline-offset:-2px}
+  .item .title{cursor:pointer}
+  .title .ext{color:var(--sub);font-size:12px;font-weight:400}
+  .snip{font-size:12.5px;color:var(--sub);margin:4px 0 2px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .orilink{display:inline-block;font-size:11.5px;color:var(--accent);text-decoration:none;margin-top:2px}
+  .orilink:hover{text-decoration:underline}
+  /* 右阅读栏 */
+  #readerHead{padding:11px 14px 10px;border-bottom:1px solid var(--line);position:relative}
+  .r-close{position:absolute;top:9px;right:10px;border:1px solid var(--line);background:var(--bg);color:var(--sub);border-radius:7px;width:26px;height:26px;cursor:pointer;font-size:13px}
+  .r-title{display:block;font-weight:700;font-size:15px;color:var(--accent2);text-decoration:none;margin-right:30px;line-height:1.4}
+  .r-title:hover{text-decoration:underline}
+  .r-meta{font-size:12px;color:var(--sub);margin-top:4px}
+  #reader{flex:1;overflow-y:auto;padding:16px 20px;background:var(--card)}
+  .r-placeholder{text-align:center;color:var(--sub);padding:70px 24px;line-height:1.8}
+  .r-loading{color:var(--sub);font-size:13px;padding:20px 0}
+  .r-article{font-size:14.5px;line-height:1.75;color:var(--ink)}
+  .r-article :where(h1,h2,h3){margin:1.1em 0 .5em;line-height:1.3}
+  .r-article img{max-width:100%;height:auto;border-radius:8px;margin:8px 0}
+  .r-article pre{background:var(--bg);padding:10px 12px;border-radius:8px;overflow:auto;font-size:12.5px}
+  .r-article a{color:var(--accent)}
+  .r-article blockquote{margin:10px 0;padding:4px 12px;border-left:3px solid var(--line);color:var(--sub)}
+  .r-via{margin-top:16px;font-size:11.5px;color:var(--sub);border-top:1px dashed var(--line);padding-top:8px}
   @media(max-width:760px){.cols{grid-template-columns:1fr}.xgrid{max-height:none}}
   @media(max-width:620px){aside{position:absolute;z-index:30;height:100%;transform:translateX(-100%);transition:transform .2s}aside.show{transform:none}#menuBtn{display:inline-block!important}}
+  @media(max-width:900px){#gutter2{display:none}#contentpane{position:absolute;right:0;top:0;bottom:0;width:100%!important;z-index:40;display:none}}
   #menuBtn{display:none;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 10px;cursor:pointer}
 </style>
 </head>
 <body>
 <div id="app">
-  <aside>
+  <aside id="sidebar">
     <div class="brand">🛰️ AI 信源时间线 <small id="totalSmall"></small></div>
     <div id="tree"></div>
   </aside>
+  <div id="gutter" title="← 拖动调整左侧菜单宽度 →"></div>
 
-  <main>
+  <section id="listpane">
     <div class="toolbar">
       <button id="menuBtn">☰ 分类</button>
       <input type="text" id="search" placeholder="🔍 搜索标题 / 正文 / 来源…">
@@ -123,9 +154,19 @@
     <div id="scroll">
       <div class="crumb" id="crumb">全部信源</div>
       <div id="list"></div>
-      <div class="foot">数据由 <code>run.py</code> 每日定时抓取 · 英文已缓存中文译文 · X 需填入 Bearer Token 后自动抓取</div>
+      <div class="foot">数据由 <code>run.py</code> 每日定时抓取 · 英文已缓存中文译文 · 点击文章标题可在右侧栏阅读去广告正文</div>
     </div>
-  </main>
+  </section>
+
+  <div id="gutter2" title="← 拖动调整阅读栏宽度 →"></div>
+  <section id="contentpane">
+    <div id="readerHead">
+      <button class="r-close" id="readerClose" title="关闭阅读栏">✕</button>
+      <a class="r-title" href="#" target="_blank" rel="noopener">选择一篇文章</a>
+      <div class="r-meta">点击左侧分类树里的某篇文章，或中间列表的标题，这里会展示抓取并去广告后的正文</div>
+    </div>
+    <div id="reader"><div class="r-placeholder">👈 点击左侧分类树里的某篇文章，或中间列表的标题，<br>这里将自动抓取原链接、去除导航与广告，呈现干净正文。</div></div>
+  </section>
 </div>
 
 <script>
@@ -174,20 +215,15 @@ function refreshReadDots(){
     const dot=r.querySelector(".rdot"); if(dot) dot.classList.toggle("on", read);
   });
 }
-// 点击三级菜单文章 -> 标记已读 + 主区定位
+// 点击三级菜单文章 -> 标记已读 + 在右栏加载正文
 function openArticle(url){
   if(!url) return;
+  const d = DATA.find(x=>x.url===url);
+  if(!d) return;
   markRead(url);
-  const gi = DATA.findIndex(d=>d.url===url);
-  if(gi<0) return;
-  let el = document.getElementById("art-"+gi);
-  if(!el){
-    const d = DATA[gi];
-    setFilter({type:"src", cat:d.category, src:d.source});
-    el = document.getElementById("art-"+gi);
-  }
-  if(el){ el.scrollIntoView({behavior:"smooth", block:"center"}); el.classList.add("flash"); setTimeout(()=>el.classList.remove("flash"),1300); }
-  refreshReadDots();
+  const gi = DATA.indexOf(d);
+  if(!document.getElementById("art-"+gi)) setFilter({type:"src", cat:d.category, src:d.source});
+  loadArticle(d);
 }
 function markItemRead(el, url){ if(markRead(url)){ if(el){ const it=el.closest(".item"); if(it) it.classList.add("read"); } refreshReadDots(); } }
 
@@ -327,21 +363,119 @@ function render(){
           ${d.author?`<span class="author">· ${esc(d.author)}</span>`:""}
           <span class="rdbtn" data-act="read">${read?'✓ 已读':'标已读'}</span>
         </div>`;
-      if(d.title) h+=`<a class="title" href="${esc(d.url)}" target="_blank" rel="noopener" data-url="${esc(d.url)}">${esc(d.title)} ↗</a>`;
-      if(twoCol){
-        h+=`<div class="cols">
-          <div><div class="col-h">EN 原文</div><div class="orig">${esc(d.text||d.title||"（无正文）")}</div></div>
-          <div><div class="col-h">中文译文</div><div class="zh">${esc(d.zh_text||d.zh_title||"")}</div></div>
-        </div>`;
-      }else if(d.lang==="en"&&!hasZh){
-        h+=`<div class="orig">${esc(d.text||d.title||"")}</div><div class="notr">（该条未翻译：翻译失败或超出时间窗）</div>`;
-      }else{
-        h+=`<div class="orig">${esc(d.text||d.title||"（无正文）")}</div>`;
-      }
+      if(d.title) h+=`<div class="title" data-url="${esc(d.url)}">${esc(d.title)} <span class="ext">↗</span></div>`;
+      h+=`<div class="snip">${esc(snippet(d))}</div>`;
+      if(d.url) h+=`<a class="orilink" href="${esc(d.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">查看原文 ↗</a>`;
       h+=`</div>`;
     });
   });
   box.innerHTML=h;
+}
+
+// ===== 第三栏：抓取并提取正文（去除导航/广告）=====
+// 借鉴开源算法 Mozilla Readability（Apache-2.0）做正文抽取；跨域通过公共 CORS 代理；
+// 失败则回退 Jina Reader 服务；再失败则显示本地已抓取摘要(zh_text)。
+function snippet(d){
+  const t=(d.zh_text||d.text||d.zh_title||d.title||"").replace(/\s+/g," ").trim();
+  return t.length>160 ? t.slice(0,160)+"…" : t;
+}
+function sanitize(html){
+  return (html||"")
+    .replace(/<script[\s\S]*?<\/script>/gi,"")
+    .replace(/<style[\s\S]*?<\/style>/gi,"")
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi,"")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi,"")
+    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi,"")
+    .replace(/javascript:/gi,"");
+}
+function renderText(t){
+  return (t||"").split(/\n{1,}/).map(p=>`<p>${esc(p.trim())}</p>`).join("");
+}
+const PROXIES=[
+  u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u),
+  u=>"https://corsproxy.io/?url="+encodeURIComponent(u),
+];
+async function tryReadability(url){
+  if(typeof Readability==="undefined") return null;
+  for(const mk of PROXIES){
+    try{
+      const r=await fetch(mk(url)); if(!r.ok) continue;
+      const html=await r.text();
+      const doc=new DOMParser().parseFromString(html,"text/html");
+      const art=new Readability(doc).parse();
+      if(art && art.content && art.content.length>200) return {html:sanitize(art.content), via:"Mozilla Readability（开源）+ 代理"};
+    }catch(e){}
+  }
+  return null;
+}
+async function extractArticle(url){
+  if(!url) return null;
+  const a=await tryReadability(url); if(a) return a;
+  try{ const r=await fetch("https://r.jina.ai/http://"+url); if(r.ok){ const t=await r.text(); if(t && t.length>200) return {text:t, via:"Jina Reader 服务"}; } }catch(e){}
+  return null;
+}
+let _readerBusy=0;
+function showReader(){ const c=document.getElementById("contentpane"); if(c) c.style.display="flex"; }
+function highlightActive(url){
+  document.querySelectorAll('#list .item').forEach(it=>it.classList.toggle('active3', it.dataset.url===url));
+}
+async function loadArticle(d){
+  if(!d) return;
+  highlightActive(d.url);
+  markRead(d.url); refreshReadDots();
+  const head=document.getElementById("readerHead");
+  const reader=document.getElementById("reader");
+  const gi=DATA.indexOf(d);
+  const el=document.getElementById("art-"+gi); if(el) el.scrollIntoView({block:"nearest"});
+  head.querySelector(".r-title").textContent=d.title||"（无标题）";
+  head.querySelector(".r-title").href=d.url||"#";
+  head.querySelector(".r-meta").textContent=`${fmtDate(d.published)} · ${d.source||""} · ${d.category||""}`;
+  reader.innerHTML='<div class="r-loading">⏳ 正在抓取并提取正文（去除导航与广告）…</div>';
+  showReader();
+  const my=++_readerBusy;
+  const res=await extractArticle(d.url);
+  if(my!==_readerBusy) return; // 已被新的点击覆盖
+  if(res && (res.html||res.text)){
+    const bodyHtml = res.html ? res.html : renderText(res.text);
+    reader.innerHTML=`<div class="r-article">${bodyHtml}</div><div class="r-via">内容提取来源：${esc(res.via)}</div>`;
+  }else{
+    const body=(d.zh_text||d.text||d.zh_title||d.title||"（本地无摘要，且在线抓取失败）");
+    reader.innerHTML=`<div class="r-article">${esc(body)}</div><div class="r-via">⚠️ 在线抓取失败，显示本地已抓取内容（${esc(d.source||"")}）</div>`;
+  }
+}
+
+// 分隔条拖动：sidebar 宽度、contentpane 宽度，宽度持久化
+function initResize(){
+  const sb=document.getElementById("sidebar");
+  const cp=document.getElementById("contentpane");
+  const w1=localStorage.getItem("dash_side_w"); if(w1) sb.style.width=w1;
+  const w2=localStorage.getItem("dash_read_w"); if(w2) cp.style.width=w2;
+  function drag(gutter, target, storeKey, grow){
+    gutter.addEventListener("mousedown", e=>{
+      e.preventDefault();
+      document.body.classList.add("resizing");
+      gutter.classList.add("drag");
+      const startX=e.clientX;
+      const startW=target.getBoundingClientRect().width;
+      function move(ev){
+        let dx=ev.clientX-startX;
+        let w=grow ? startW+dx : startW-dx;
+        w=Math.max(grow?180:320, Math.min(grow?460:820, w));
+        target.style.width=w+"px";
+      }
+      function up(){
+        document.removeEventListener("mousemove",move);
+        document.removeEventListener("mouseup",up);
+        document.body.classList.remove("resizing");
+        gutter.classList.remove("drag");
+        localStorage.setItem(storeKey, target.style.width);
+      }
+      document.addEventListener("mousemove",move);
+      document.addEventListener("mouseup",up);
+    });
+  }
+  drag(document.getElementById("gutter"), sb, "dash_side_w", true);   // 向左拖增大左栏
+  drag(document.getElementById("gutter2"), cp, "dash_read_w", false);  // 向左拖增大右栏
 }
 
 // ===== 数据加载 =====
@@ -363,12 +497,15 @@ document.getElementById("search").oninput=e=>{ ui.q=e.target.value; render(); };
 document.getElementById("langSel").onchange=e=>{ ui.lang=e.target.value; render(); };
 document.getElementById("zhBtn").onclick=()=>{ ui.showZh=!ui.showZh; render(); };
 document.getElementById("reloadBtn").onclick=()=>fetchData();
-// 主列表「标记已读」按钮 + 点击标题也记为已读（不影响跳转）
+// 主列表：标记已读按钮 / 点击卡片或标题 -> 右栏加载正文
 document.getElementById("list").addEventListener("click", e=>{
   const rd=e.target.closest(".rdbtn");
   if(rd){ const it=rd.closest(".item"); if(it) markItemRead(it, it.dataset.url); return; }
-  const ti=e.target.closest(".title");
-  if(ti && ti.dataset.url) markItemRead(ti, ti.dataset.url);
+  const card=e.target.closest(".item");
+  if(card && card.dataset.url){
+    const d=DATA.find(x=>x.url===card.dataset.url);
+    if(d) loadArticle(d);
+  }
 });
 document.getElementById("openBtn").onclick=()=>document.getElementById("fileIn").click();
 document.getElementById("fileIn").onchange=e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ loadData(JSON.parse(r.result)); }catch(_){ alert("JSON 解析失败"); } }; r.readAsText(f); };
@@ -377,6 +514,8 @@ document.getElementById("menuBtn").onclick=()=>document.querySelector("aside").c
 if(localStorage.getItem("dash_theme")==="dark"){ document.body.classList.add("dark"); document.getElementById("themeBtn").textContent="☀️ 浅色"; }
 
 loadRead();
+initResize();
+document.getElementById("readerClose").onclick=()=>{ document.getElementById("contentpane").style.display="none"; };
 fetchData();
 </script>
 </body>
