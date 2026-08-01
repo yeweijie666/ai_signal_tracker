@@ -44,46 +44,65 @@ def to_bj(s):
 def build_html(items):
     now = datetime.now(BJ)
     today = now.strftime("%Y-%m-%d")
-    # 近 24 小时优先；不足则取最新 20 条
+    # 近 24 小时优先；不足则取最新 25 条
     recent = [x for x in items if (to_bj(x.get("published", "")) is not None
               and (now - to_bj(x["published"])) <= timedelta(hours=24))]
-    if len(recent) < 5:
-        recent = sorted(items, key=lambda x: x.get("published", ""), reverse=True)[:20]
+    if len(recent) < 8:
+        recent = sorted(items, key=lambda x: x.get("published", ""), reverse=True)[:25]
     recent.sort(key=lambda x: x.get("published", ""), reverse=True)
 
     en = [x for x in items if x.get("lang") == "en"]
     tr = [x for x in en if x.get("zh_title")]
     cat = Counter(x.get("category", "") for x in items)
 
-    rows = []
+    # 按分类分组展示（AI 信号 + 每日 RSS 综合 一目了然）
+    PER_CAT = 8
+    order, groups = [], {}
     for x in recent:
-        b = to_bj(x.get("published", ""))
-        bt = b.strftime("%m-%d %H:%M") if b else ""
-        src = x.get("source", "")
-        cate = x.get("category", "")
-        title = (x.get("title") or "").strip()
-        zh = (x.get("zh_title") or "").strip()
-        url = x.get("url") or "#"
-        block = f'''
-        <div style="margin:10px 0;padding:8px 10px;border-left:3px solid #4a90d9;background:#f7f9fc;">
-          <div style="color:#888;font-size:12px;margin-bottom:3px;">{bt} · {src} · {cate}</div>
-          <div style="font-size:14px;"><a href="{url}" style="color:#1a5fb4;text-decoration:none;">{title}</a></div>'''
-        if zh and zh != title:
-            block += f'\n          <div style="color:#333;font-size:13px;margin-top:2px;">🇨🇳 {zh}</div>'
-        block += "\n        </div>"
-        rows.append(block)
-    rows_html = "\n".join(rows) if rows else '<p style="color:#888;">近 24 小时暂无新条目。</p>'
+        c = x.get("category", "") or "未分类"
+        groups.setdefault(c, []).append(x)
+        if c not in order:
+            order.append(c)
+
+    sections = []
+    for c in order:
+        lst = groups[c]
+        extra = len(lst) - PER_CAT
+        shown = lst[:PER_CAT]
+        rows = []
+        for x in shown:
+            b = to_bj(x.get("published", ""))
+            bt = b.strftime("%m-%d %H:%M") if b else ""
+            src = x.get("source", "")
+            title = (x.get("title") or "").strip()
+            zh = (x.get("zh_title") or "").strip()
+            url = x.get("url") or "#"
+            block = f'''
+          <div style="margin:8px 0;padding:7px 9px;border-left:3px solid #4a90d9;background:#f7f9fc;">
+            <div style="color:#888;font-size:12px;margin-bottom:2px;">{bt} · {src}</div>
+            <div style="font-size:14px;"><a href="{url}" style="color:#1a5fb4;text-decoration:none;">{title}</a></div>'''
+            if zh and zh != title:
+                block += f'\n            <div style="color:#333;font-size:13px;margin-top:2px;">🇨🇳 {zh}</div>'
+            block += "\n          </div>"
+            rows.append(block)
+        more = f'<p style="color:#999;font-size:12px;margin:4px 0 0;">…还有 {extra} 条，<a href="{DASHBOARD}" style="color:#1a5fb4;">看板查看全部</a></p>' if extra > 0 else ""
+        sections.append(f'''
+      <h3 style="margin:16px 0 6px;font-size:15px;color:#2c3e50;">📂 {c} <span style="color:#999;font-weight:normal;font-size:12px;">（{len(lst)}）</span></h3>
+      {''.join(rows)}{more}''')
+
+    sections_html = "\n".join(sections) if sections else '<p style="color:#888;">近 24 小时暂无新条目。</p>'
 
     cat_html = " · ".join(f"{k} {v}" for k, v in cat.most_common())
     return f'''
     <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:680px;margin:0 auto;color:#222;">
-      <h2 style="margin:0 0 4px;">🤖 AI 硬核信源日报 · {today}</h2>
-      <p style="color:#666;margin:0 0 12px;">累计 {len(items)} 条（英文 {len(en)}，已译 {len(tr)}）｜ 分类：{cat_html}</p>
-      <p style="margin:0 0 14px;">👉 <a href="{DASHBOARD}" style="color:#1a5fb4;">打开完整时间线看板</a></p>
+      <h2 style="margin:0 0 4px;">📡 每日信源日报 · {today}</h2>
+      <p style="color:#666;margin:0 0 4px;">累计 {len(items)} 条（英文 {len(en)}，已译 {len(tr)}）｜ 今日更新 {len(recent)} 条</p>
+      <p style="color:#666;margin:0 0 12px;">分类：{cat_html}</p>
+      <p style="margin:0 0 14px;">👉 <a href="{DASHBOARD}" style="color:#1a5fb4;">打开完整时间线看板（按源展开 / 中英对照）</a></p>
       <hr style="border:none;border-top:1px solid #e5e5e5;margin:12px 0;">
-      {rows_html}
+      {sections_html}
       <hr style="border:none;border-top:1px solid #e5e5e5;margin:16px 0;">
-      <p style="color:#999;font-size:12px;">由 GitHub Actions 自动生成 · 数据来源：arXiv/HN/HF/GitHub/Reddit/RSS(Karpathy 92源)/Newsletter/中文站</p>
+      <p style="color:#999;font-size:12px;">由 GitHub Actions 自动生成 · 数据来源：AI信号（arXiv/HN/HF/GitHub/Reddit/RSS·Karpathy/Newsletter/中文站/X）+ 每日RSS综合（少数派/36氪/联合早报/华尔街见闻/FT中文网 等 21 源）</p>
     </div>'''
 
 
@@ -109,7 +128,7 @@ def main():
         print("[skip] signals.json 为空，跳过发信")
         return
     now = datetime.now(BJ)
-    subject = f"AI 信源日报 {now.strftime('%Y-%m-%d')}"
+    subject = f"每日信源日报 {now.strftime('%Y-%m-%d')}"
     send(subject, build_html(items))
     print("邮件发送完成")
 
