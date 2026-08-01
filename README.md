@@ -62,3 +62,28 @@ X 已关闭免费 API，未登录抓取会被反爬拦截且违反 ToS，**无�
 ## 自定义
 - **加信源**：在 `config.py` 对应列表里加一行即可（RSS 加 url+type，X 加 handle）。
 - **换抓取频率**：改 `setup_daily_task.bat` 里的 `/ST 08:00` 或加 `/RI 360` 改每 N 分钟。
+
+---
+
+## ☁️ 云端托管（GitHub Pages + 每日邮件）已部署
+
+仓库：`https://github.com/yeweijie666/ai_signal_tracker`
+看板（任意设备打开）：`https://yeweijie666.github.io/ai_signal_tracker/dashboard.html`
+
+`.github/workflows/daily.yml` 在 GitHub 云端**每天北京时间 08:30** 自动：爬取 → 翻译 → **发邮件日报** → 提交数据 → Pages 自动重建。
+完全不需要你的电脑开机。
+
+### 开启每日邮件（只需做一次）
+用你自己的 QQ 邮箱发给自己，免第三方服务。需要两个 GitHub Secret：
+
+1. 登录 QQ 邮箱网页版 → **设置 → 账户 → 开启 IMAP/SMTP 服务** → 按提示生成**授权码**（不是登录密码）。
+2. 进仓库 **Settings → Secrets and variables → Actions → New repository secret**，添加：
+   - `QQ_EMAIL` = `270665534@qq.com`（发件人）
+   - `QQ_AUTH_CODE` = 刚才生成的**授权码**
+   - `TO_ADDR`（可选）= 收件人，默认同 `QQ_EMAIL`，即发给自己
+3. 之后每天 08:30 爬完，日报自动发到 `270665534@qq.com`。
+
+> 没填这两个 Secret 也能正常运行：脚本检测到缺配置会**自动跳过发信**，不影响爬取与看板更新。
+
+### 想手动跑一次
+仓库 **Actions → AI Signal Daily Crawl → Run workflow**。
