@@ -44,15 +44,22 @@ def fetch_arxiv(url, name, cat):
     return out
 
 # ---------- 通用 RSS ----------
-def fetch_rss(url, name, cat, sub="", limit=None):
+def fetch_rss(url, name, cat, sub="", limit=None, use_feed_title=False):
     out = []
     try:
         d = feedparser.parse(url)
+        # 每个订阅源用真实 feed 标题做源名（用于看板按订阅源分别展开）；
+        # 仅在显式要求且能拿到标题时覆盖，避免把机构/平台的中文别名丢掉。
+        src = name
+        if use_feed_title and d.get("feed"):
+            ft = (d.feed.get("title") or "").strip()
+            if ft:
+                src = ft
         for e in d.entries[:limit or MAX_PER_SOURCE]:
             pub = e.get("published_parsed") or e.get("updated_parsed")
             body = e.get("summary", "") or e.get("description", "")
             body = re.sub("<[^>]+>", " ", body)
-            out.append(_norm(name, cat, sub, "", e.get("title", ""),
+            out.append(_norm(src, cat, sub, "", e.get("title", ""),
                              body, e.get("link", ""), _iso(pub)))
     except Exception as ex:
         print(f"  [rss] {name} 失败: {ex}")
@@ -148,6 +155,8 @@ def fetch_x():
     return out
 
 # ---------- Karpathy OPML 展开（t.co -> GitHub Gist -> raw OPML）----------
+# 返回 [(title, url), ...]：直接从 <outline> 的 text/title 属性取源名，
+# 不再对每个 feed 二次抓取标题（云端网络下大量超时，会导致源名退回占位符）。
 def expand_opml():
     feeds = []
     try:
@@ -164,11 +173,17 @@ def expand_opml():
                 opml_file = next((v for v in files.values() if v.get("raw_url")), None)
             if opml_file and opml_file.get("raw_url"):
                 raw = SESSION.get(opml_file["raw_url"], timeout=20).text
-        raw2 = raw.replace("&quot;", '"').replace("&amp;", "&")
-        feeds = re.findall(r'xmlUrl="([^"]+)"', raw2)
-        if not feeds:
-            feeds = re.findall(r'&quot;(https?://[^&]+)&quot;', raw)
-        feeds = [u for u in feeds if u.startswith("http")]
+        raw = raw.replace("&quot;", '"').replace("&amp;", "&")
+        # 每个 <outline .../>：有 xmlUrl 才是订阅源（否则是文件夹，跳过）
+        for m in re.finditer(r'<outline\b([^>]*)/?>', raw):
+            attr = m.group(1)
+            xu = re.search(r'xmlUrl="([^"]+)"', attr)
+            if not xu:
+                continue
+            ti = re.search(r'title="([^"]*)"', attr)
+            tx = re.search(r'text="([^"]*)"', attr)
+            title = (ti.group(1) if ti else (tx.group(1) if tx else "")).strip() or "RSS源"
+            feeds.append((title, xu.group(1)))
         print(f"  [opml] Karpathy 清单展开 {len(feeds)} 个 RSS")
     except Exception as ex:
         print(f"  [opml] 展开失败: {ex}")
@@ -202,8 +217,8 @@ def collect_all():
     print("== 抓取 X ==")
     items += fetch_x()
     print("== 抓取 Karpathy RSS 清单 ==")
-    for fx in expand_opml():
-        items += fetch_rss(fx, "RSS·Karpathy", "RSS订阅", limit=8)
+    for title, fx in expand_opml():
+        items += fetch_rss(fx, title, "RSS订阅", sub="Karpathy清单", limit=8)
     print(f"== 共获取 {len(items)} 条 ==")
     return items
 

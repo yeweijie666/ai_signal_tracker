@@ -32,6 +32,15 @@ ai_signal_tracker/
    > 若直接双击 dashboard.html 打开（file://），浏览器会拦截本地文件读取，
    > 此时点页面右上角「📂 打开 signals.json」手动选择同目录的 signals.json 即可。
 
+## 看板功能（dashboard.html）
+- **左侧分级菜单（可折叠）**：
+  - 顶部「🐦 X 核心信源」头像墙：15 个 X 账号的**头像 + 姓名 + 身份**，点击任一卡片直达其 x.com 主页（X 无法自动爬取，故以"关注目录"形式呈现，点开即去）。
+  - 一级分类（硬核平台 / 机构报告 / 中文资讯 / RSS订阅 / Newsletter）：点击展开 → 二级为**具体订阅源**。
+  - **RSS 订阅源单独展开**：Karpathy 清单里的每个 RSS 都是独立二级项，点开只看该源内容；点一级「RSS订阅」则看全部来源。
+- **每条文章**：顶部显示 **发布日期（YYYY-MM-DD）**；标题为**可点击链接，直达原文**；英文原文与中文译文并排（可点「译/原 切换」只看原文）。
+- 顶部工具栏：搜索、语言筛选（仅英文/仅中文）、深色模式、刷新、本地打开 `signals.json`。
+- 数据自动按日期分组，时间线倒序。
+
 ## 已接入的信源（自动爬取）
 - **硬核平台**：arXiv(cs.CL/cs.AI)、Hacker News、Hugging Face Blog、Papers With Code、GitHub Trending、Reddit(r/MachineLearning、r/LocalLLaMA)
 - **机构报告**：麦肯锡、高盛、红杉、CB Insights、Gartner、The Information、FutureThink
