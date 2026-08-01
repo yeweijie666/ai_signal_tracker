@@ -7,8 +7,14 @@ DB = os.path.join(os.path.dirname(__file__), "signals.db")
 EXPORT = os.path.join(os.path.dirname(__file__), "signals.json")
 
 def _hid(it):
-    base = (it.get("url") or "") + "|" + (it.get("title") or "")[:80] + "|" + (it.get("published") or "")
-    return hashlib.md5(base.encode("utf-8")).hexdigest()
+    # 以 url 为主键：同一篇文章每次重抓 id 稳定，可原地更新(含 source 改名)，
+    # 不再因 title/published 格式化差异生成新行而累积重复。
+    url = (it.get("url") or "").strip()
+    if url:
+        return hashlib.md5(("u:" + url).encode("utf-8")).hexdigest()
+    # 无 url 时退化为 标题+时间
+    base = (it.get("title") or "")[:120] + "|" + (it.get("published") or "")
+    return hashlib.md5(("t:" + base).encode("utf-8")).hexdigest()
 
 def conn():
     c = sqlite3.connect(DB)
