@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 硬核信源 · 时间线看板</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#fff; --ink:#1f2329; --sub:#6b7280; --line:#e6e8eb;
+    --accent:#2563eb; --shadow:0 1px 3px rgba(0,0,0,.07);
+    --cX:#2563eb; --cOrg:#d97706; --cPlat:#0f766e; --cCn:#dc2626; --cRss:#7c3aed; --cNews:#16a34a;
+  }
+  body.dark{--bg:#15171c;--card:#1e2128;--ink:#e5e7eb;--sub:#9aa3af;--line:#2c313a;--shadow:0 1px 3px rgba(0,0,0,.4)}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"PingFang SC","Microsoft YaHei",Segoe UI,sans-serif;font-size:14px;line-height:1.55}
+  header{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--line);padding:11px 18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  header h1{font-size:16px;margin:0;font-weight:700}
+  header .meta{font-size:12px;color:var(--sub)}
+  .theme-btn{margin-left:auto;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:5px 10px;font-size:12px}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:52px;z-index:15}
+  .toolbar input[type=text]{flex:1;min-width:160px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:7px 10px;font-size:13px}
+  select{border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:7px 8px;font-size:13px}
+  .chip{cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--sub);border-radius:20px;padding:5px 12px;font-size:12px}
+  .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn{cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 11px;font-size:12px;font-weight:600}
+  .btn:hover{background:var(--bg)}
+  main{max-width:1000px;margin:0 auto;padding:14px 18px}
+  .dayhdr{font-size:13px;font-weight:700;color:var(--sub);margin:18px 0 8px;position:sticky;top:104px;background:var(--bg);padding:4px 0;z-index:5}
+  .item{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:var(--shadow)}
+  .item .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px}
+  .badge{font-size:11px;padding:2px 9px;border-radius:6px;color:#fff;font-weight:600}
+  .b-X账号{background:var(--cX)} .b-机构报告{background:var(--cOrg)} .b-硬核平台{background:var(--cPlat)}
+  .b-中文资讯{background:var(--cCn)} .b-RSS订阅{background:var(--cRss)} .b-Newsletter{background:var(--cNews)}
+  .time{font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
+  .author{font-size:12px;color:var(--sub)}
+  .title{font-weight:700;font-size:14.5px;margin:2px 0 6px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .cols.one{grid-template-columns:1fr}
+  .col-h{font-size:11px;font-weight:700;color:var(--sub);margin-bottom:3px;letter-spacing:.3px}
+  .orig{font-size:13.5px}
+  .zh{font-size:13.5px;background:var(--bg);border-radius:8px;padding:8px 10px;border-left:3px solid var(--accent)}
+  .notr{font-size:12px;color:var(--sub);font-style:italic}
+  .src-link{font-size:12px;color:var(--accent);text-decoration:none;font-weight:600}
+  .src-link:hover{text-decoration:underline}
+  .togg{font-size:11.5px;color:var(--accent);cursor:pointer;user-select:none;margin-left:6px}
+  .empty{text-align:center;color:var(--sub);padding:50px 20px}
+  .drop{margin:20px auto;max-width:520px;border:2px dashed var(--line);border-radius:12px;padding:26px;text-align:center;color:var(--sub);cursor:pointer}
+  .drop:hover{border-color:var(--accent);color:var(--accent)}
+  .foot{color:var(--sub);font-size:12px;text-align:center;padding:24px}
+  .stat{display:inline-block;margin-right:14px;font-size:12px;color:var(--sub)}
+  .stat b{color:var(--ink);font-size:15px}
+  @media(max-width:680px){.cols{grid-template-columns:1fr}.dayhdr{top:148px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🛰️ AI 硬核信源 · 时间线</h1>
+  <span class="meta" id="meta">加载中…</span>
+  <button class="theme-btn" id="themeBtn">🌙 深色</button>
+</header>
+
+<div class="toolbar">
+  <input type="text" id="search" placeholder="🔍 搜索标题/正文/来源…">
+  <select id="catSel"><option value="">全部分类</option></select>
+  <select id="srcSel"><option value="">全部来源</option></select>
+  <select id="langSel">
+    <option value="">全部语言</option><option value="en">仅英文</option><option value="zh">仅中文</option>
+  </select>
+  <button class="btn" id="reloadBtn">↻ 重新加载</button>
+  <button class="btn" id="openBtn">📂 打开 signals.json</button>
+  <input type="file" id="fileIn" accept="application/json" style="display:none">
+</div>
+
+<main id="main">
+  <div class="empty" id="empty">正在加载 signals.json …<br><br>若直接双击打开本文件导致无法读取，请点右上角「📂 打开 signals.json」选择同目录下的 signals.json，或用本地服务器打开。</div>
+</main>
+
+<div class="foot">
+  数据由 <code>run.py</code> 每日定时抓取生成 · 翻译结果随爬取缓存 ·
+  X(Twitter) 需填入 Bearer Token 后自动抓取，未配置时跳过。
+</div>
+
+<script>
+const CATS=["X账号","机构报告","硬核平台","中文资讯","RSS订阅","Newsletter"];
+let DATA=[];
+let ui={q:"",cat:"",src:"",lang:"",showZh:true};
+
+function loadData(arr){
+  DATA=arr;
+  // 填充筛选器
+  const cats=[...new Set(DATA.map(d=>d.category))];
+  const cs=document.getElementById("catSel");
+  cats.forEach(c=>{if(!CATS.includes(c))return;const o=document.createElement("option");o.value=c;o.textContent=c;cs.appendChild(o);});
+  const srcs=[...new Set(DATA.map(d=>d.source))].sort();
+  const ss=document.getElementById("srcSel");
+  srcs.forEach(s=>{const o=document.createElement("option");o.value=s;o.textContent=s;ss.appendChild(o);});
+  const dates=[...new Set(DATA.map(d=>d.published).filter(Boolean))];
+  const latest=dates.sort().slice(-1)[0]||"";
+  document.getElementById("meta").textContent=`共 ${DATA.length} 条 · 最新 ${latest.slice(0,10)||"-"}`;
+  render();
+}
+
+function render(){
+  const q=ui.q.toLowerCase();
+  let list=DATA.filter(d=>{
+    if(ui.cat&&d.category!==ui.cat)return false;
+    if(ui.src&&d.source!==ui.src)return false;
+    if(ui.lang&&d.lang!==ui.lang)return false;
+    if(q){const hay=(d.title+" "+(d.text||"")+" "+(d.zh_title||"")+" "+(d.zh_text||"")+" "+d.source+" "+(d.author||"")).toLowerCase();if(!hay.includes(q))return false;}
+    return true;
+  });
+  list.sort((a,b)=>(b.published||"").localeCompare(a.published||""));
+  const main=document.getElementById("main");
+  if(!list.length){main.innerHTML='<div class="empty">没有匹配的信源条目。</div>';return;}
+  // 按日期分组
+  const groups={};
+  list.forEach(d=>{const day=(d.published||"未知日期").slice(0,10);(groups[day]=groups[day]||[]).push(d);});
+  const days=Object.keys(groups).sort().reverse();
+  let h="";
+  days.forEach(day=>{
+    h+=`<div class="dayhdr">${day}</div>`;
+    groups[day].forEach(d=>{
+      const hasZh=(d.lang==="en")&&(d.zh_title||d.zh_text);
+      const twoCol=hasZh&&ui.showZh;
+      h+=`<div class="item">
+        <div class="top">
+          <span class="badge b-${d.category}">${d.category}${d.sub?("·"+d.sub):""}</span>
+          <span class="time">${(d.published||"").slice(11,19)||""}</span>
+          ${d.author?`<span class="author">${d.author}</span>`:""}
+          <span class="author">· ${d.source}</span>
+          ${d.url?`<a class="src-link" href="${d.url}" target="_blank" rel="noopener" style="margin-left:auto">原文 ↗</a>`:""}
+        </div>`;
+      if(d.title)h+=`<div class="title">${esc(d.title)}</div>`;
+      if(twoCol){
+        h+=`<div class="cols">
+          <div><div class="col-h">EN 原文</div><div class="orig">${esc(d.text||d.title||"（无正文）")}</div></div>
+          <div><div class="col-h">中文译文</div><div class="zh">${esc(d.zh_text||d.zh_title||"")}</div></div>
+        </div>`;
+      }else if(d.lang==="en"&&!hasZh){
+        h+=`<div class="orig">${esc(d.text||d.title||"")}</div><div class="notr">（该条未翻译：翻译失败或超出时间窗）</div>`;
+      }else{
+        h+=`<div class="orig">${esc(d.text||d.title||"")}</div>`;
+      }
+      h+=`</div>`;
+    });
+  });
+  main.innerHTML=h;
+}
+function esc(s){return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+
+// 事件
+document.getElementById("search").oninput=e=>{ui.q=e.target.value;render();};
+document.getElementById("catSel").onchange=e=>{ui.cat=e.target.value;render();};
+document.getElementById("srcSel").onchange=e=>{ui.src=e.target.value;render();};
+document.getElementById("langSel").onchange=e=>{ui.lang=e.target.value;render();};
+document.getElementById("reloadBtn").onclick=()=>fetchData();
+document.getElementById("openBtn").onclick=()=>document.getElementById("fileIn").click();
+document.getElementById("fileIn").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{loadData(JSON.parse(r.result));}catch(_){alert("JSON 解析失败");}};r.readAsText(f);};
+document.getElementById("themeBtn").onclick=()=>{document.body.classList.toggle("dark");localStorage.setItem("dash_theme",document.body.classList.contains("dark")?"dark":"light");document.getElementById("themeBtn").textContent=document.body.classList.contains("dark")?"☀️ 浅色":"🌙 深色";};
+if(localStorage.getItem("dash_theme")==="dark"){document.body.classList.add("dark");document.getElementById("themeBtn").textContent="☀️ 浅色";}
+
+// 加载：优先 fetch 同目录 signals.json（需经本地服务器），失败则提示用文件选择
+function fetchData(){
+  fetch("signals.json?t="+Date.now()).then(r=>{if(!r.ok)throw 0;return r.json();})
+    .then(loadData).catch(()=>{
+      document.getElementById("main").innerHTML='<div class="drop" id="drop">⚠️ 无法通过 fetch 读取 signals.json（直接打开文件时浏览器会拦截本地读取）。<br><br>点击此处选择 <b>signals.json</b>，或在项目目录运行 <code>python -m http.server</code> 后访问。<br><br>也可用上方「📂 打开 signals.json」按钮。</div>';
+      const dp=document.getElementById("drop");if(dp)dp.onclick=()=>document.getElementById("fileIn").click();
+    });
+}
+fetchData();
+</script>
+</body>
+</html>

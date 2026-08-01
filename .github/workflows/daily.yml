@@ -1,0 +1,48 @@
+# AI 信源定时爬取 —— 免费云端运行，无需本地电脑
+# 用法：
+#   1. 把整个 ai_signal_tracker/ 推到一个 GitHub 仓库（含本文件）
+#   2. 仓库 Settings → Actions → 允许运行；Settings → Pages → Source 选本分支(root)
+#   3. 即可在 https://<你用户名>.github.io/<仓库名>/dashboard.html 随时查看
+#   4. 也能在 Actions 页面点 "Run workflow" 手动触发一次
+name: AI Signal Daily Crawl
+
+on:
+  schedule:
+    - cron: "0 0 * * *"        # 每天 UTC 00:00 ≈ 北京时间 08:00
+  workflow_dispatch:          # 允许手动触发
+
+permissions:
+  contents: write             # 允许提交 signals.json 回仓库
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests deep-translator feedparser
+
+      - name: Run crawl + translate
+        run: python run.py
+
+      - name: Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add signals.json signals.db 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "无新数据，跳过提交"
+          else
+            git commit -m "chore: daily signals update $(date -u +%Y-%m-%d)"
+            git push
+          fi

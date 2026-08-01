@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+envs/
+
+# 运行时生成
+*.db
+run.log
+_check.js
+__test.db
+signals.db
+
+# 本地密钥/环境
+.env
+*.local
+
+# OS
+.DS_Store
+Thumbs.db
