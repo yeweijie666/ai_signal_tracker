@@ -3,7 +3,7 @@
 import re, json, time, html, socket
 import requests, feedparser
 from config import (X_BEARER_TOKEN, X_HANDLES, INSTITUTION_FEEDS, PLATFORMS,
-                    CN_FEEDS, NEWSLETTERS, KARPATHY_OPML, MAX_PER_SOURCE)
+                    CN_FEEDS, NEWSLETTERS, RSS_DIGEST_FEEDS, KARPATHY_OPML, MAX_PER_SOURCE)
 from translate import is_chinese
 
 socket.setdefaulttimeout(12)  # 保护 feedparser（无内置超时），避免个别死源卡死
@@ -214,6 +214,9 @@ def collect_all():
     print("== 抓取 Newsletter ==")
     for name, cat, url, typ in NEWSLETTERS:
         items += fetch_rss(url, name, cat)
+    print("== 抓取 每日RSS综合（原 fluent-tools 日报信源）==")
+    for name, cat, sub, url, typ in RSS_DIGEST_FEEDS:
+        items += fetch_rss(url, name, cat, sub)
     print("== 抓取 X ==")
     items += fetch_x()
     print("== 抓取 Karpathy RSS 清单 ==")
