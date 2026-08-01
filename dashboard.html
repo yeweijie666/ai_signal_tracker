@@ -35,6 +35,26 @@
   .cat.open>.subs{display:block}
   .subs .node{font-size:12.5px;color:var(--sub)}
   .subs .node:before{content:"";width:5px;height:5px;border-radius:50%;background:var(--line);margin-right:2px;flex:0 0 5px}
+  /* RSS 文章菜单 + 已读/未读 */
+  .rsssec{border-bottom:1px solid var(--line);margin-bottom:4px}
+  .rsslist{display:none;padding:2px 6px 4px;max-height:48vh;overflow-y:auto}
+  .rsssec.open .rsslist{display:block}
+  .rssfoot{display:none;padding:2px 10px 8px;gap:6px}
+  .rsssec.open .rssfoot{display:flex}
+  .rssrow{display:flex;align-items:flex-start;gap:8px;padding:7px 8px;border-radius:8px;cursor:pointer}
+  .rssrow:hover{background:var(--hover)}
+  .rssrow.read .rss-title{color:var(--sub);font-weight:400}
+  .rss-title{font-size:12.5px;font-weight:600;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .rss-sub{font-size:10.5px;color:var(--sub);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rssmeta{display:flex;flex-direction:column;min-width:0;flex:1}
+  .rdot{flex:0 0 8px;width:8px;height:8px;border-radius:50%;margin-top:5px;background:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+  .rssrow.read .rdot{background:transparent;border:1px solid var(--sub);box-shadow:none}
+  .rssmini{font-size:11px;padding:3px 8px}
+  .rss-empty{font-size:12px;color:var(--sub);padding:8px 12px}
+  .item.read{border-left:3px solid var(--line)}
+  .item.flash{outline:2px solid var(--accent);outline-offset:1px}
+  .item .rdbtn{margin-left:auto;font-size:11px;color:var(--accent);cursor:pointer;user-select:none;border:1px solid var(--line);border-radius:6px;padding:1px 7px}
+  .item.read .rdbtn{color:var(--sub)}
   /* X 头像墙 */
   .xsec{border-top:1px solid var(--line);margin-top:6px;padding-top:6px}
   .xgrid{display:none;padding:8px 6px 4px;max-height:340px;overflow-y:auto}
@@ -139,13 +159,68 @@ let ui = {q:"", lang:"", showZh:true, filter:{type:"all"}, sortDesc:true};
 function esc(s){return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 function fmtDate(p){ if(!p) return "未知日期"; const d=(p||"").slice(0,10); return /^\d{4}-\d{2}-\d{2}$/.test(d)? d : "未知日期"; }
 
+// ===== RSS 文章（SSR 拉取）菜单 + 已读/未读 =====
+const READ_KEY = "rss_read_v1";
+let READ = {};
+function loadRead(){ try{ READ = JSON.parse(localStorage.getItem(READ_KEY)||"{}")||{}; }catch(e){ READ={}; } }
+function saveRead(){ try{ localStorage.setItem(READ_KEY, JSON.stringify(READ)); }catch(e){} }
+// “SSR 拉到的文章” = 每日RSS 综合（原 fluent-tools 日报信源）+ Karpathy RSS 清单
+function isRssItem(d){ return d.sub === "每日RSS" || d.category === "RSS订阅"; }
+function isRead(url){ return !!(url && READ[url]); }
+function markRead(url){ if(!url || READ[url]) return false; READ[url]=true; saveRead(); return true; }
+function unmarkRead(url){ if(!url) return; delete READ[url]; saveRead(); }
+function rssUnreadCount(){ return DATA.filter(d=>isRssItem(d) && !isRead(d.url)).length; }
+
+// 点击左侧 RSS 文章标题 -> 标记已读 + 主区滚动定位
+function openRssItem(url){
+  if(!url) return;
+  markRead(url);
+  if(ui.filter.type!=="all") setFilter({type:"all"});
+  const gi = DATA.findIndex(d=>d.url===url);
+  if(gi<0) return;
+  const el = document.getElementById("art-"+gi);
+  if(el){ el.scrollIntoView({behavior:"smooth", block:"center"}); el.classList.add("flash"); setTimeout(()=>el.classList.remove("flash"),1300); }
+  buildRssList();
+}
+function markItemRead(el, url){ if(markRead(url)){ if(el){ const it=el.closest(".item"); if(it) it.classList.add("read"); } buildRssList(); } }
+
+// 构建左侧 RSS 文章列表（标题 + 已读未读点）
+function buildRssList(){
+  const rows = DATA.filter(isRssItem).sort((a,b)=>(b.published||"").localeCompare(a.published||""));
+  const box = document.getElementById("rsslist");
+  const cnt = document.getElementById("rssUnread");
+  if(cnt) cnt.textContent = rows.filter(d=>!isRead(d.url)).length;
+  if(!box) return;
+  if(!rows.length){ box.innerHTML = '<div class="rss-empty">暂无 RSS 文章</div>'; return; }
+  box.innerHTML = rows.map(d=>{
+    const read = isRead(d.url);
+    return `<div class="rssrow ${read?'read':''}" data-url="${esc(d.url)}" title="点按标记已读并定位">
+      <span class="rdot ${read?'on':''}"></span>
+      <div class="rssmeta"><span class="rss-title">${esc(d.title||"（无标题）")}</span>
+      <span class="rss-sub">${esc(d.source)} · ${fmtDate(d.published)}</span></div>
+    </div>`;
+  }).join("");
+  box.querySelectorAll(".rssrow").forEach(r=>{
+    r.onclick = ()=> openRssItem(r.dataset.url);
+  });
+}
+
 // ===== 侧栏构建 =====
 function buildSidebar(){
   const present = new Set(DATA.map(d=>d.category));
   let cats = CAT_ORDER.filter(c=>present.has(c));
   [...present].forEach(c=>{ if(!cats.includes(c) && c!=="X账号") cats.push(c); });
 
-  let h = `<div class="node all ${ui.filter.type==="all"?"active":""}" data-f="all">📋 全部信源 <span class="cnt">${DATA.length}</span></div>`;
+  const rssUnread = DATA.filter(isRssItem).filter(d=>!isRead(d.url)).length;
+  let h = `<div class="rsssec open" id="rsssec">
+    <div class="node rsshead" id="rsshead">📰 RSS 文章 <span class="cnt" id="rssUnread">${rssUnread}</span> <span class="tw" style="transform:rotate(90deg)">▸</span></div>
+    <div class="rsslist" id="rsslist"></div>
+    <div class="rssfoot">
+      <button class="btn rssmini" id="rssAllRead">✓ 全部已读</button>
+      <button class="btn rssmini" id="rssAllUnread">↺ 重置未读</button>
+    </div>
+  </div>`;
+  h += `<div class="node all ${ui.filter.type==="all"?"active":""}" data-f="all">📋 全部信源 <span class="cnt">${DATA.length}</span></div>`;
 
   // X 头像墙（顶部，默认展开）
   h += `<div class="xsec open">
@@ -196,6 +271,17 @@ function buildSidebar(){
   });
   const xh=document.getElementById("xhead");
   xh.onclick=()=>{ xh.parentElement.classList.toggle("open"); xh.querySelector(".tw").style.transform = xh.parentElement.classList.contains("open")?"rotate(90deg)":"rotate(0deg)"; };
+
+  // RSS 文章菜单：折叠 + 全部已读/重置
+  buildRssList();
+  const rsec=document.getElementById("rsssec");
+  const rhead=document.getElementById("rsshead");
+  rhead.onclick=()=>{
+    rsec.classList.toggle("open");
+    rhead.querySelector(".tw").style.transform = rsec.classList.contains("open")?"rotate(90deg)":"rotate(0deg)";
+  };
+  document.getElementById("rssAllRead").onclick=(e)=>{ e.stopPropagation(); DATA.filter(isRssItem).forEach(d=>markRead(d.url)); buildRssList(); };
+  document.getElementById("rssAllUnread").onclick=(e)=>{ e.stopPropagation(); DATA.filter(isRssItem).forEach(d=>unmarkRead(d.url)); buildRssList(); };
 }
 
 function setFilter(f){
@@ -237,14 +323,17 @@ function render(){
       const hasZh=(d.lang==="en")&&(d.zh_title||d.zh_text);
       const twoCol=hasZh&&ui.showZh;
       const cls=CAT_COLOR[d.category]||"";
-      h+=`<div class="item">
+      const gi=DATA.indexOf(d);
+      const read=isRead(d.url);
+      h+=`<div class="item ${read?'read':''}" id="art-${gi}" data-url="${esc(d.url)}">
         <div class="top">
           <span class="date">${fmtDate(d.published)}</span>
           <span class="badge ${cls}">${esc(d.category)}${d.sub?("·"+esc(d.sub)):""}</span>
           <span class="src">${esc(d.source)}</span>
           ${d.author?`<span class="author">· ${esc(d.author)}</span>`:""}
+          <span class="rdbtn" data-act="read">${read?'✓ 已读':'标已读'}</span>
         </div>`;
-      if(d.title) h+=`<a class="title" href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.title)} ↗</a>`;
+      if(d.title) h+=`<a class="title" href="${esc(d.url)}" target="_blank" rel="noopener" data-url="${esc(d.url)}">${esc(d.title)} ↗</a>`;
       if(twoCol){
         h+=`<div class="cols">
           <div><div class="col-h">EN 原文</div><div class="orig">${esc(d.text||d.title||"（无正文）")}</div></div>
@@ -280,12 +369,20 @@ document.getElementById("search").oninput=e=>{ ui.q=e.target.value; render(); };
 document.getElementById("langSel").onchange=e=>{ ui.lang=e.target.value; render(); };
 document.getElementById("zhBtn").onclick=()=>{ ui.showZh=!ui.showZh; render(); };
 document.getElementById("reloadBtn").onclick=()=>fetchData();
+// 主列表「标记已读」按钮 + 点击标题也记为已读（不影响跳转）
+document.getElementById("list").addEventListener("click", e=>{
+  const rd=e.target.closest(".rdbtn");
+  if(rd){ const it=rd.closest(".item"); if(it) markItemRead(it, it.dataset.url); return; }
+  const ti=e.target.closest(".title");
+  if(ti && ti.dataset.url) markItemRead(ti, ti.dataset.url);
+});
 document.getElementById("openBtn").onclick=()=>document.getElementById("fileIn").click();
 document.getElementById("fileIn").onchange=e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ loadData(JSON.parse(r.result)); }catch(_){ alert("JSON 解析失败"); } }; r.readAsText(f); };
 document.getElementById("themeBtn").onclick=()=>{ document.body.classList.toggle("dark"); localStorage.setItem("dash_theme", document.body.classList.contains("dark")?"dark":"light"); document.getElementById("themeBtn").textContent=document.body.classList.contains("dark")?"☀️ 浅色":"🌙 深色"; };
 document.getElementById("menuBtn").onclick=()=>document.querySelector("aside").classList.toggle("show");
 if(localStorage.getItem("dash_theme")==="dark"){ document.body.classList.add("dark"); document.getElementById("themeBtn").textContent="☀️ 浅色"; }
 
+loadRead();
 fetchData();
 </script>
 </body>
