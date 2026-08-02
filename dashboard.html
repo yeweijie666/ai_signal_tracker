@@ -109,8 +109,12 @@ function Readability(e,t){if(t&&t.documentElement)e=t,t=arguments[2];else if(!e|
   /* 三栏：左菜单(可拖动) / 中列表 / 右阅读(可拖动) */
   #gutter,#gutter2{width:6px;flex:0 0 6px;cursor:col-resize;background:transparent;position:relative;z-index:6;transition:background .15s}
   #gutter:hover,#gutter2:hover,#gutter.drag,#gutter2.drag{background:var(--accent)}
-  #listpane{flex:1 1 auto;min-width:260px;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
-  #contentpane{flex:0 0 440px;display:flex;flex-direction:column;background:var(--card);border-left:1px solid var(--line);overflow:hidden}
+  #listpane{flex:1 1 auto;min-width:220px;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+  #contentpane{flex:0 0 560px;display:flex;flex-direction:column;background:var(--card);border-left:1px solid var(--line);overflow:hidden}
+  /* 阅读全屏：右栏覆盖中间列表，左菜单保留 */
+  body.reader-full #gutter,body.reader-full #gutter2{display:none}
+  body.reader-full #listpane{display:none}
+  body.reader-full #contentpane{flex:1 1 auto;width:auto!important;border-left:none}
   body.resizing{cursor:col-resize!important;user-select:none!important}
   .item.active3{outline:2px solid var(--accent);outline-offset:-2px}
   .item .title{cursor:pointer}
@@ -121,6 +125,7 @@ function Readability(e,t){if(t&&t.documentElement)e=t,t=arguments[2];else if(!e|
   /* 右阅读栏 */
   #readerHead{padding:11px 14px 10px;border-bottom:1px solid var(--line);position:relative}
   .r-close{position:absolute;top:9px;right:10px;border:1px solid var(--line);background:var(--bg);color:var(--sub);border-radius:7px;width:26px;height:26px;cursor:pointer;font-size:13px}
+  .r-full{position:absolute;top:9px;right:42px;border:1px solid var(--line);background:var(--bg);color:var(--sub);border-radius:7px;width:26px;height:26px;cursor:pointer;font-size:14px;line-height:1}
   .r-title{display:block;font-weight:700;font-size:15px;color:var(--accent2);text-decoration:none;margin-right:30px;line-height:1.4}
   .r-title:hover{text-decoration:underline}
   .r-meta{font-size:12px;color:var(--sub);margin-top:4px}
@@ -172,6 +177,7 @@ function Readability(e,t){if(t&&t.documentElement)e=t,t=arguments[2];else if(!e|
   <div id="gutter2" title="← 拖动调整阅读栏宽度 →"></div>
   <section id="contentpane">
     <div id="readerHead">
+      <button class="r-full" id="readerFull" title="全屏阅读（覆盖中间列表，左菜单保留，按 Esc 退出）">⛶</button>
       <button class="r-close" id="readerClose" title="关闭阅读栏">✕</button>
       <a class="r-title" href="#" target="_blank" rel="noopener">选择一篇文章</a>
       <div class="r-meta">点击左侧分类树里的某篇文章，或中间列表的标题，这里会展示抓取并去广告后的正文</div>
@@ -479,7 +485,7 @@ function initResize(){
       function move(ev){
         let dx=ev.clientX-startX;
         let w=grow ? startW+dx : startW-dx;
-        w=Math.max(grow?180:320, Math.min(grow?460:820, w));
+        w=Math.max(grow?180:320, Math.min(grow?760:820, w));
         target.style.width=w+"px";
       }
       function up(){
@@ -539,7 +545,9 @@ if(localStorage.getItem("dash_theme")==="dark"){ document.body.classList.add("da
 
 loadRead();
 initResize();
-document.getElementById("readerClose").onclick=()=>{ document.getElementById("contentpane").style.display="none"; };
+document.getElementById("readerClose").onclick=()=>{ document.getElementById("contentpane").style.display="none"; document.body.classList.remove("reader-full"); };
+document.getElementById("readerFull").onclick=()=>{ document.body.classList.toggle("reader-full"); };
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ document.body.classList.remove("reader-full"); } });
 fetchData();
 </script>
 </body>
