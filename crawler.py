@@ -30,11 +30,36 @@ def _iso(dt):
     except Exception:
         return str(dt)
 
+def _get_text(url, name, timeout=25, retries=3):
+    """带 UA / 超时 / 重试地预取 feed 文本，返回内容字符串（失败返回空）。
+
+    关键修复：原先 fetch_* 直接 feedparser.parse(url) 用 feedparser 默认 UA + 全局
+    12s 超时去请求；云端 runner 网络对大量博客源响应慢，直接超时 -> 0 条 -> 源“消失”。
+    现在改用 SESSION（带 UA）请求，单源独立 25s 超时 + 重试，再把文本交给 feedparser
+    解析（不再二次请求），既可控又稳，显著提升云端抓取成功率。
+    """
+    last = ""
+    for i in range(retries):
+        try:
+            r = SESSION.get(url, timeout=timeout)
+            if r.status_code == 200 and r.text.strip():
+                return r.text
+            last = f"HTTP {r.status_code}"
+        except Exception as ex:
+            last = repr(ex)
+        if i < retries - 1:
+            time.sleep(2)
+    print(f"  [feed] {name} 预取失败({last})，跳过该源")
+    return ""
+
 # ---------- arXiv ----------
 def fetch_arxiv(url, name, cat):
     out = []
+    raw = _get_text(url, name)
+    if not raw:
+        return out
     try:
-        d = feedparser.parse(url)
+        d = feedparser.parse(raw)
         for e in d.entries[:MAX_PER_SOURCE]:
             pub = e.get("published_parsed") or e.get("updated_parsed")
             out.append(_norm(name, cat, "", "", e.get("title", ""),
@@ -47,10 +72,16 @@ def fetch_arxiv(url, name, cat):
 # ---------- 通用 RSS ----------
 def fetch_rss(url, name, cat, sub="", limit=None, use_feed_title=False):
     out = []
+    raw = _get_text(url, name)
+    if not raw:
+        return out
     try:
-        d = feedparser.parse(url)
+        d = feedparser.parse(raw)
     except Exception as ex:
         print(f"  [rss] {name} 解析失败(源跳过): {ex}")
+        return out
+    if d.bozo and not d.entries:
+        print(f"  [rss] {name} 解析异常(跳过): {getattr(d, 'bozo_exception', '')}")
         return out
     # 每个订阅源用真实 feed 标题做源名（用于看板按订阅源分别展开）；
     # 仅在显式要求且能拿到标题时覆盖，避免把机构/平台的中文别名丢掉。
