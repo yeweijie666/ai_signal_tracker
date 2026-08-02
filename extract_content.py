@@ -39,6 +39,11 @@ def _fix_imgs(html, base):
 
     def repl(m):
         tag = m.group(0)
+        # 图片懒加载：data-src -> src（很多站点用 data-src 延迟加载，否则图片裂）
+        ms = re.search(r'src\s*=\s*"([^"]*)"', tag, re.I)
+        mds = re.search(r'data-src\s*=\s*"([^"]*)"', tag, re.I)
+        if (not ms or not ms.group(1).strip()) and mds:
+            tag = tag[:mds.start()] + 'src="%s"' % mds.group(1) + tag[mds.end():]
         for attr in ("src", "srcset"):
             mm = re.search(attr + r'\s*=\s*"([^"]*)"', tag, re.I)
             if not mm:
