@@ -408,11 +408,14 @@ function getProxyBase(){
 }
 function proxyUrl(u){ return getProxyBase()+encodeURIComponent(u); }
 const PROXIES=[ proxyUrl ];
+let _proxyRateLimitedUntil=0;
 async function tryReadability(url){
   if(typeof Readability==="undefined") return null;
   for(const mk of PROXIES){
     try{
-      const r=await fetch(mk(url)); if(!r.ok) continue;
+      const r=await fetch(mk(url));
+      if(r.status===429){ _proxyRateLimitedUntil=Date.now()+5*60e3; continue; }
+      if(!r.ok) continue;
       const html=await r.text();
       const doc=new DOMParser().parseFromString(html,"text/html");
       const art=new Readability(doc).parse();
@@ -421,11 +424,40 @@ async function tryReadability(url){
   }
   return null;
 }
+// 识别无效内容（追踪像素 / 登录墙 / 缓存快照 / 过短）
+function isJunkContent(t){
+  if(!t) return true;
+  const L=(t||"").toLowerCase();
+  if(L.includes("tracker probe")||L.includes("1x1 image")||L.includes("cached snapshot")||L.includes("consider retry with caching opt-out")) return true;
+  const plain=(t||"").replace(/<[^>]+>/g,"").replace(/\s+/g,"").trim();
+  return plain.length<120;
+}
+// 浏览器端结果缓存：避免重复打代理（持久到 localStorage，TTL 控制）
+function _artCacheGet(u){
+  try{ const s=localStorage.getItem("art_"+u); if(!s) return null; const o=JSON.parse(s); if(o.exp<Date.now()){ localStorage.removeItem("art_"+u); return null; } return o; }catch(e){ return null; }
+}
+function _artCacheSet(u,o,ttlMs){ try{ o.exp=Date.now()+ttlMs; localStorage.setItem("art_"+u, JSON.stringify(o)); }catch(e){} }
+const _artInflight={};
 async function extractArticle(url){
   if(!url) return null;
-  const a=await tryReadability(url); if(a) return a;
-  try{ const r=await fetch("https://r.jina.ai/http://"+url); if(r.ok){ const t=await r.text(); if(t && t.length>200) return {text:t, via:"Jina Reader 服务"}; } }catch(e){}
-  return null;
+  if(_artInflight[url]) return _artInflight[url];   // 并发去重：快速点击同一篇不重复打代理
+  const run=async()=>{
+    const c=_artCacheGet(url);
+    if(c){ return c.kind==="ok" ? {html:c.html, text:c.text, via:c.via} : null; }
+    // 1) 代理 + Readability（代理限流中则跳过，直接走 jina）
+    if(_proxyRateLimitedUntil<=Date.now()){
+      const a=await tryReadability(url);
+      if(a){ const body=a.html||a.text||""; if(!isJunkContent(body)){ _artCacheSet(url,{kind:"ok",html:a.html||"",text:a.text||"",via:a.via},6*3600e3); return a; } _artCacheSet(url,{kind:"invalid"},6*3600e3); return null; }
+    }
+    // 2) Jina 兜底（不走代理，可绕过被墙目标）
+    try{ const r=await fetch("https://r.jina.ai/http://"+url); if(r.ok){ const t=await r.text(); if(t && !isJunkContent(t)){ _artCacheSet(url,{kind:"ok",text:t,via:"Jina Reader 服务"},6*3600e3); return {text:t,via:"Jina Reader 服务"}; } } }catch(e){}
+    // 3) 都失败：标记限流/无效，短期内不再重试，直接降级显示本地摘要
+    const limited=_proxyRateLimitedUntil>Date.now();
+    _artCacheSet(url, {kind:limited?"ratelimit":"invalid"}, limited?5*60e3:30*60e3);
+    return null;
+  };
+  const p=run(); _artInflight[url]=p; p.finally(()=>{ delete _artInflight[url]; });
+  return p;
 }
 // ===== 一键翻译（经自托管代理调 Google 翻译，绕 GFW）=====
 function splitForTranslate(text, max){
@@ -514,7 +546,7 @@ async function loadArticle(d){
     reader.innerHTML=`<div class="r-article">${bodyHtml}</div><div class="r-via">内容提取来源：${esc(res.via)}</div>`;
   }else{
     const body=(d.zh_text||d.text||d.zh_title||d.title||"（本地无摘要，且在线抓取失败）");
-    reader.innerHTML=`<div class="r-article">${esc(body)}</div><div class="r-via">⚠️ 在线抓取失败，显示本地已抓取内容（${esc(d.source||"")}）</div>`;
+    reader.innerHTML=`<div class="r-article">${esc(body)}</div><div class="r-via">⚠️ 在线抓取失败，显示本地已抓取内容（${esc(d.source||"")}）。多为目标站反爬/动态加载（如 Twitch），或代理临时限流，已自动跳过代理。</div>`;
   }
 }
 
