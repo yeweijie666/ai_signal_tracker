@@ -390,8 +390,9 @@ function render(){
 }
 
 // ===== 第三栏：抓取并提取正文（去除导航/广告）=====
-// 借鉴开源算法 Mozilla Readability（Apache-2.0）做正文抽取；跨域通过公共 CORS 代理；
-// 失败则回退 Jina Reader 服务；再失败则显示本地已抓取摘要(zh_text)。
+// 优先渲染服务端每日预提取并缓存的全文（d.content / 长 d.text），瞬时、无需代理、不再报错；
+// 仅当无缓存时才走浏览器端：借鉴 Mozilla Readability（Apache-2.0）经 CORS 代理抽取，
+// 失败回退 Jina Reader，再失败显示本地摘要(zh_text)。
 function snippet(d){
   const t=(d.zh_text||d.text||d.zh_title||d.title||"").replace(/\s+/g," ").trim();
   return t.length>160 ? t.slice(0,160)+"…" : t;
@@ -455,6 +456,14 @@ async function loadArticle(d){
   head.querySelector(".r-title").textContent=d.title||"（无标题）";
   head.querySelector(".r-title").href=d.url||"#";
   head.querySelector(".r-meta").textContent=`${fmtDate(d.published)} · ${d.source||""} · ${d.category||""}`;
+  // 优先：服务端已预提取并缓存的全文（瞬时、无需代理、不再报错）
+  const full = (d.content && d.content.trim().length>200) ? d.content
+             : ((d.text||"").length>400 ? d.text : null);
+  if(full){
+    reader.innerHTML=`<div class="r-article">${renderText(full)}</div><div class="r-via">内容提取来源：本地预提取（服务端每日缓存，瞬时加载，无需代理）</div>`;
+    showReader();
+    return;
+  }
   reader.innerHTML='<div class="r-loading">⏳ 正在抓取并提取正文（去除导航与广告）…</div>';
   showReader();
   const my=++_readerBusy;
