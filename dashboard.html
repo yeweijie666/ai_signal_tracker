@@ -55,6 +55,45 @@
   .item.flash{outline:2px solid var(--accent);outline-offset:1px}
   .item .rdbtn{margin-left:auto;font-size:11px;color:var(--accent);cursor:pointer;user-select:none;border:1px solid var(--line);border-radius:6px;padding:1px 7px}
   .item.read .rdbtn{color:var(--sub)}
+  /* ===== 左侧最下方：涨停板分析入口 ===== */
+  .zt-box{margin:10px 10px 14px;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(135deg,#fff7ed,#fff);cursor:pointer;flex:0 0 auto}
+  body.dark .zt-box{background:linear-gradient(135deg,#2a2118,#1e2128)}
+  .zt-box:hover{border-color:var(--cOrg);box-shadow:var(--shadow)}
+  .zt-box .zt-h{font-weight:800;font-size:14px;display:flex;align-items:center;gap:6px}
+  .zt-box .zt-d{font-weight:500;font-size:11px;color:var(--sub);margin-left:auto}
+  .zt-box .zt-s{margin-top:5px;font-size:12.5px;color:var(--ink)}
+  .zt-box .zt-s b{color:var(--cOrg);font-size:14px}
+  .zt-box .zt-go{margin-top:4px;font-size:11px;color:var(--sub);text-align:right}
+  /* ===== 涨停板分析正文视图 ===== */
+  .zt-view h2{margin:.2em 0 .5em;font-size:18px}
+  .zt-view h2 small{font-size:11px;color:var(--sub);font-weight:500;margin-left:6px}
+  .zt-view h3{margin:14px 0 7px;font-size:14px;color:var(--accent2);border-left:3px solid var(--cOrg);padding-left:7px}
+  .zt-stats{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0 4px}
+  .zt-chip{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:12.5px;color:var(--sub)}
+  .zt-chip b{color:var(--ink);font-size:14px;margin-left:3px}
+  .zt-ladder{display:flex;flex-direction:column;gap:5px}
+  .zt-tier{display:flex;gap:9px;align-items:baseline;padding:5px 8px;border-radius:8px;background:var(--bg)}
+  .zt-lbc{font-weight:800;color:var(--cOrg);font-size:13px;flex:0 0 58px}
+  .zt-names{font-size:12.5px;color:var(--ink);line-height:1.5}
+  .zt-names i{color:var(--sub);font-style:normal;font-size:11px;margin-left:2px}
+  .zt-reasons{display:flex;flex-direction:column;gap:5px}
+  .zt-bar{display:flex;align-items:center;gap:8px;font-size:12.5px}
+  .zt-bar-name{flex:0 0 110px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .zt-bar-track{flex:1;height:9px;background:var(--bg);border-radius:5px;overflow:hidden}
+  .zt-bar-fill{display:block;height:100%;background:linear-gradient(90deg,#f59e0b,#ef4444)}
+  .zt-bar-cnt{flex:0 0 30px;text-align:right;color:var(--sub)}
+  .zt-list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-top:4px}
+  .zt-row{display:flex;gap:8px;padding:6px 9px;font-size:12.5px;border-top:1px solid var(--line);align-items:center}
+  .zt-row:first-child{border-top:none}
+  .zt-headrow{background:var(--bg);font-weight:700;color:var(--sub);font-size:11.5px}
+  .zt-name{flex:0 0 92px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .zt-code{flex:0 0 64px;color:var(--sub);font-size:11px}
+  .zt-pct{flex:0 0 56px;color:#dc2626;font-weight:700}
+  .zt-lbc2{flex:0 0 44px;color:var(--cOrg);font-weight:600}
+  .zt-rsn{flex:1;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .zt-fd{flex:0 0 56px;color:var(--sub);text-align:right}
+  .zt-t{flex:0 0 46px;color:var(--sub);text-align:right}
+  .zt-empty{color:var(--sub);font-size:12px;padding:4px 2px}
   /* X 头像墙 */
   .xsec{border-top:1px solid var(--line);margin-top:6px;padding-top:6px}
   .xgrid{display:none;padding:8px 6px 4px;max-height:340px;overflow-y:auto}
@@ -154,6 +193,11 @@
   <aside id="sidebar">
     <div class="brand">🛰️ AI 信源时间线 <small id="totalSmall"></small></div>
     <div id="tree"></div>
+    <div id="ztBox" class="zt-box" title="涨停板分析（每日 08:30 自动抓取同花顺风格涨停板数据）">
+      <div class="zt-h">📈 涨停分析</div>
+      <div class="zt-s">加载中…</div>
+      <div class="zt-go">点击查看 ›</div>
+    </div>
   </aside>
   <div id="gutter" title="← 拖动调整左侧菜单宽度 →"></div>
 
@@ -655,6 +699,53 @@ function initResize(){
   drag(document.getElementById("gutter2"), cp, "dash_read_w", false);  // 向左拖增大右栏
 }
 
+// ===== 涨停板分析（每日 08:30 自动抓取，zt_analysis.json；数据源：东方财富涨停板池，同花顺同源行情）=====
+let ZT=null;
+function fetchZt(){
+  fetch("zt_analysis.json?t="+Date.now()).then(r=>{ if(!r.ok) throw 0; return r.json(); })
+    .then(j=>{ ZT=j; renderZtBox(); })
+    .catch(()=>{ const b=document.getElementById("ztBox"); if(b) b.querySelector(".zt-s").textContent="暂无数据（等每日 08:30 生成）"; });
+}
+function renderZtBox(){
+  const box=document.getElementById("ztBox"); if(!box) return;
+  const set=(h,s,go)=>{ box.querySelector(".zt-h").innerHTML=h; box.querySelector(".zt-s").innerHTML=s; box.querySelector(".zt-go").textContent=go||"点击查看 ›"; };
+  if(!ZT || ZT.empty){
+    set('📈 涨停分析 <span class="zt-d">'+(ZT&&ZT.date?ZT.date:"")+'</span>', (ZT&&ZT.note?"暂无数据":"加载中…"), "点击查看 ›"); return;
+  }
+  const s=ZT.stats||{}, zt=s.zt!=null?s.zt:"?", lbc=s.lbc!=null?s.lbc:"?";
+  set('📈 涨停分析 <span class="zt-d">'+ZT.date+'</span>',
+      '涨停 <b>'+zt+'</b> · 连板 <b>'+lbc+'</b>'+(s.dt!=null?(' · 跌停 '+s.dt):''),
+      '点击查看完整分析 ›');
+}
+function showZt(){
+  const head=document.getElementById("readerHead"), reader=document.getElementById("reader");
+  if(!ZT || ZT.empty){
+    const why=ZT&&ZT.note?ZT.note:"尚未抓取到涨停板数据（每日 08:30 定时任务会自动生成）。";
+    reader.innerHTML='<div class="r-article"><h2>📈 涨停板分析</h2><p>'+esc(why)+'</p><p>数据来源：东方财富涨停板池（与同花顺涨停板分析同源行情），每日 08:30 自动抓取。</p></div>';
+    head.querySelector(".r-title").textContent="涨停板分析"; head.querySelector(".r-title").href="#";
+    head.querySelector(".r-meta").textContent="每日 08:30 自动更新"; showReader(); return;
+  }
+  const zt=ZT, s=zt.stats||{};
+  const chips=[["涨停",s.zt],["跌停",s.dt],["连板",s.lbc],["上涨",s.sz],["下跌",s.xd]].filter(x=>x[1]!=null)
+    .map(([k,v])=>'<span class="zt-chip">'+k+' <b>'+v+'</b></span>').join('');
+  const ladder=(zt.streak_ladder||[]).slice(0,6).map(t=>{
+    const names=t.stocks.slice(0,8).map(x=>esc(x.name)+(x.reason&&x.reason!=="—"?'<i>('+esc(x.reason)+')</i>':"")).join("、");
+    return '<div class="zt-tier"><span class="zt-lbc">'+t.lbc+'连板</span><span class="zt-names">'+(names||"—")+'</span></div>';
+  }).join('')||'<div class="zt-empty">无连板数据</div>';
+  const top=zt.boards&&zt.boards[0]?zt.boards[0].count:1;
+  const reasons=(zt.boards||[]).map(b=>'<div class="zt-bar"><span class="zt-bar-name">'+esc(b.name)+'</span><span class="zt-bar-track"><span class="zt-bar-fill" style="width:'+Math.max(6,Math.round(b.count/top*100))+'%"></span></span><span class="zt-bar-cnt">'+b.count+'</span></div>').join('')||'<div class="zt-empty">—</div>';
+  const rows=(zt.stocks||[]).map(x=>'<div class="zt-row"><span class="zt-name">'+esc(x.name)+'</span><span class="zt-code">'+esc(x.code)+'</span><span class="zt-pct">+'+x.pct+'%</span><span class="zt-lbc2">'+(x.lbc>0?x.lbc+'连':"首板")+'</span><span class="zt-rsn">'+esc(x.reason)+'</span><span class="zt-fd">封'+x.fd_text+'</span><span class="zt-t">'+(x.first_time||"—")+'</span></div>').join('');
+  reader.innerHTML='<div class="r-article zt-view"><h2>📈 涨停板分析 <small>'+zt.date+' · 数据：'+esc(zt.source)+'</small></h2>'
+    +'<div class="zt-stats">'+chips+'</div>'
+    +'<h3>连板梯队</h3><div class="zt-ladder">'+ladder+'</div>'
+    +'<h3>涨停原因 / 题材分布</h3><div class="zt-reasons">'+reasons+'</div>'
+    +'<h3>涨停股（'+(zt.stocks.length)+'）</h3><div class="zt-list"><div class="zt-row zt-headrow"><span>名称</span><span>代码</span><span>涨幅</span><span>连板</span><span>涨停原因</span><span>封单</span><span>首封</span></div>'+rows+'</div>'
+    +'<div class="r-via">数据：东方财富涨停板池（与同花顺涨停板分析同源行情）· 每日 08:30 自动抓取。盘后完整数据以交易所/券商为准。</div></div>';
+  head.querySelector(".r-title").textContent="涨停板分析 "+zt.date; head.querySelector(".r-title").href="#";
+  head.querySelector(".r-meta").textContent="涨停 "+(s.zt!=null?s.zt:"?")+" · 连板 "+(s.lbc!=null?s.lbc:"?");
+  showReader();
+}
+
 // ===== 数据加载 =====
 function loadData(arr){
   DATA=arr;
@@ -717,7 +808,9 @@ document.getElementById("readerOpen").onclick=openInFrame;
 document.getElementById("listToggle").onclick=toggleList;
 document.getElementById("collapseBtn").onclick=toggleList;
 document.getElementById("menuToggle2").onclick=toggleMenu;
+document.getElementById("ztBox").onclick=showZt;
 fetchData();
+fetchZt();
 </script>
 </body>
 </html>
