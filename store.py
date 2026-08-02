@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """SQLite 存储：去重、按时间索引、缓存翻译；导出 JSON 供看板使用。"""
 import os, sqlite3, hashlib, json, time
-from config import LOOKBACK_DAYS
+from config import LOOKBACK_DAYS, INSTITUTION_FEEDS, PLATFORMS, CN_FEEDS, NEWSLETTERS
 
 DB = os.path.join(os.path.dirname(__file__), "signals.db")
 EXPORT = os.path.join(os.path.dirname(__file__), "signals.json")
@@ -95,6 +95,50 @@ def export_json():
         json.dump(out, f, ensure_ascii=False, indent=1)
     print(f"  导出 {len(out)} 条 -> signals.json")
     return len(out)
+
+
+# ===== 上一轮缓存回填 + 信源状态登记 =====
+META = os.path.join(os.path.dirname(__file__), "sources_meta.json")
+
+def _noop(s):
+    return ""
+
+def seed_from_previous():
+    """每轮开始：把上一轮导出的 signals.json 回填进 DB。
+    由于 signals.db 被 gitignore（不在仓库里），云端每次都是从空库起步；
+    任何本轮抓取失败的源，其“上一轮还能抓到的”条目会借此保留，避免源在云端的
+    偶发超时/拦截下彻底消失。回填条目用空翻译函数，避免重复消耗翻译额度。"""
+    if not os.path.exists(EXPORT):
+        print("  种子：无上一轮 signals.json，跳过")
+        return 0
+    try:
+        prev = json.load(open(EXPORT, encoding="utf-8"))
+    except Exception as e:
+        print("  种子：读取上一轮 signals.json 失败：", e)
+        return 0
+    if not isinstance(prev, list):
+        return 0
+    upsert(prev, _noop)
+    print(f"  种子：从上一轮 signals.json 回填 {len(prev)} 条（含失败源的缓存）")
+    return len(prev)
+
+def write_sources_meta(status):
+    """写出 sources_meta.json：所有已配置信源的抓取状态，供看板常驻展示
+    （即便某源本轮 0 条，也始终出现在侧栏，并标注 抓取失败/暂无更新）。"""
+    cats = {}
+    for name, info in status.items():
+        cats.setdefault(info["cat"], []).append({
+            "name": name, "sub": info.get("sub", ""),
+            "status": info.get("status", ""), "count": info.get("count", 0),
+            "error": info.get("error", ""),
+        })
+    meta = {"generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ"), "categories": cats}
+    try:
+        with open(META, "w", encoding="utf-8") as f:
+            json.dump(meta, f, ensure_ascii=False, indent=1)
+        print(f"  写出 sources_meta.json：{sum(len(v) for v in cats.values())} 个已配置源")
+    except Exception as e:
+        print("  写出 sources_meta.json 失败：", e)
 
 
 def _esc(s):
