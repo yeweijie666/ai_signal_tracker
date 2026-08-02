@@ -10,6 +10,10 @@ import os as _os
 # 优先读环境变量（GitHub Actions 里设 Secret 名为 X_BEARER_TOKEN 即可云端启用），
 # 本地也可直接在下方引号里填。留空则跳过并在日志提示。
 X_BEARER_TOKEN = _os.environ.get("X_BEARER_TOKEN", "")
+BASE_DIR = _os.path.dirname(_os.path.abspath(__file__))
+# 用户从 Fluent Reader 导出的真实订阅清单（已提交进仓库，离线可读，不依赖网络，避免“源丢失”）
+USER_OPML = _os.path.join(BASE_DIR, "fluent_reader.opml")
+USER_FEED_CAT = "我的订阅"
 X_HANDLES = [
     ("@karpathy", "核心大脑"), ("@sama", "核心大脑"), ("@darioamodei", "核心大脑"),
     ("@ylecun", "核心大脑"), ("@AndrewYNg", "核心大脑"),
