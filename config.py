@@ -22,7 +22,7 @@ X_HANDLES = [
 # ---- 机构报告（周期性报告，监控发布页 RSS / 列表）----
 INSTITUTION_FEEDS = [
     # name, category, sub, url, type
-    ("麦肯锡 McKinsey AI", "机构报告", "投行/咨询", "https://www.mckinsey.com/featured-insights/artificial-intelligence/rss", "rss"),
+    ("麦肯锡 McKinsey AI", "机构报告", "投行/咨询", "https://www.mckinsey.com/insights/rss", "rss"),
     ("高盛 Goldman Sachs Tech", "机构报告", "投行/咨询", "https://www.goldmansachs.com/insights/technology/rss", "rss"),
     ("红杉资本 Sequoia", "机构报告", "投行/咨询", "https://www.sequoiacap.com/rss", "rss"),
     ("CB Insights", "机构报告", "数据机构", "https://www.cbinsights.com/rss", "rss"),
