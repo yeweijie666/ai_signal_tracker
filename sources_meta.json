@@ -1,0 +1,160 @@
+{
+ "generated_at": "2026-08-02T09:23:27Z",
+ "categories": {
+  "机构报告": [
+   {
+    "name": "麦肯锡 McKinsey AI",
+    "sub": "投行/咨询",
+    "status": "ok",
+    "count": 15,
+    "error": ""
+   },
+   {
+    "name": "高盛 Goldman Sachs Tech",
+    "sub": "投行/咨询",
+    "status": "ok",
+    "count": 15,
+    "error": ""
+   },
+   {
+    "name": "红杉资本 Sequoia",
+    "sub": "投行/咨询",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   },
+   {
+    "name": "CB Insights",
+    "sub": "数据机构",
+    "status": "ok",
+    "count": 15,
+    "error": ""
+   },
+   {
+    "name": "Gartner",
+    "sub": "数据机构",
+    "status": "ok",
+    "count": 15,
+    "error": ""
+   },
+   {
+    "name": "The Information",
+    "sub": "数据机构",
+    "status": "ok",
+    "count": 15,
+    "error": ""
+   },
+   {
+    "name": "FutureThink 未来智库",
+    "sub": "宏观趋势",
+    "status": "ok",
+    "count": 15,
+    "error": ""
+   }
+  ],
+  "硬核平台": [
+   {
+    "name": "arXiv cs.CL",
+    "sub": "",
+    "status": "ok",
+    "count": 30,
+    "error": ""
+   },
+   {
+    "name": "arXiv cs.AI",
+    "sub": "",
+    "status": "ok",
+    "count": 30,
+    "error": ""
+   },
+   {
+    "name": "Hugging Face Blog",
+    "sub": "",
+    "status": "ok",
+    "count": 40,
+    "error": ""
+   },
+   {
+    "name": "Papers With Code",
+    "sub": "",
+    "status": "ok",
+    "count": 15,
+    "error": ""
+   },
+   {
+    "name": "GitHub Trending (llm)",
+    "sub": "",
+    "status": "ok",
+    "count": 15,
+    "error": ""
+   },
+   {
+    "name": "Hacker News",
+    "sub": "",
+    "status": "ok",
+    "count": 30,
+    "error": ""
+   },
+   {
+    "name": "Reddit r/MachineLearning",
+    "sub": "",
+    "status": "ok",
+    "count": 25,
+    "error": ""
+   },
+   {
+    "name": "Reddit r/LocalLLaMA",
+    "sub": "",
+    "status": "empty",
+    "count": 0,
+    "error": ""
+   }
+  ],
+  "中文资讯": [
+   {
+    "name": "机器之心",
+    "sub": "",
+    "status": "ok",
+    "count": 15,
+    "error": ""
+   },
+   {
+    "name": "量子位",
+    "sub": "",
+    "status": "failed",
+    "count": 0,
+    "error": "预取失败"
+   },
+   {
+    "name": "AITOP100",
+    "sub": "",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   }
+  ],
+  "Newsletter": [
+   {
+    "name": "The Batch",
+    "sub": "",
+    "status": "ok",
+    "count": 15,
+    "error": ""
+   },
+   {
+    "name": "Import AI",
+    "sub": "",
+    "status": "ok",
+    "count": 15,
+    "error": ""
+   },
+   {
+    "name": "Interconnects (Nathan Lambert)",
+    "sub": "",
+    "status": "ok",
+    "count": 15,
+    "error": ""
+   }
+  ]
+ }
+}
