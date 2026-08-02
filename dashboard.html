@@ -31,6 +31,8 @@
   .node.open .tw{transform:rotate(90deg)}
   .cnt{margin-left:auto;font-size:11px;color:var(--sub);background:var(--bg);border-radius:10px;padding:1px 7px}
   .node.active .cnt{background:var(--accent);color:#fff}
+  .src-warn{background:#fef2f2;color:#dc2626;border:1px solid #fecaca;font-weight:700}
+  body.dark .src-warn{background:#3a1d1d;color:#fca5a5;border-color:#7f1d1d}
   .cathead{font-weight:600}
   .subs{margin-left:6px;border-left:1px solid var(--line);padding-left:4px;display:none}
   .cat.open>.subs{display:block}
@@ -263,6 +265,7 @@ const CAT_COLOR = {"X账号":"b-X账号","机构报告":"b-机构报告","硬核
                    "中文资讯":"b-中文资讯","RSS订阅":"b-RSS订阅","Newsletter":"b-Newsletter"};
 
 let DATA = [];
+let META = null;   // 信源状态（sources_meta.json）：保证看板常驻展示所有已配置源，失败也可见
 let ui = {q:"", lang:"", showZh:true, filter:{type:"all"}, sortDesc:true, openCats:new Set(), openSrcs:new Set()};
 
 function esc(s){return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
@@ -298,9 +301,14 @@ function markItemRead(el, url){ if(markRead(url)){ if(el){ const it=el.closest("
 
 // ===== 侧栏构建 =====
 function buildSidebar(){
-  const present = new Set(DATA.map(d=>d.category));
-  let cats = CAT_ORDER.filter(c=>present.has(c));
-  [...present].forEach(c=>{ if(!cats.includes(c) && c!=="X账号") cats.push(c); });
+  const metaCats = (META && META.categories) ? META.categories : {};
+  const curatedCats = ["硬核平台","机构报告","中文资讯","Newsletter"];
+  // 分类顺序：精选分类优先（来自 sources_meta，保证常驻），其后 RSS订阅（来自数据），再补其余
+  const dataCats = new Set(DATA.map(d=>d.category));
+  const ordered = curatedCats.slice();
+  if(dataCats.has("RSS订阅")) ordered.push("RSS订阅");
+  [...dataCats].forEach(c=>{ if(!ordered.includes(c) && c!=="X账号") ordered.push(c); });
+  let cats = ordered;
 
   let h = `<div class="node all ${ui.filter.type==="all"?"active":""}" data-f="all">📋 全部信源 <span class="cnt">${DATA.length}</span></div>`;
 
@@ -320,10 +328,15 @@ function buildSidebar(){
   // 分类树（一级分类 → 二级订阅源 → 三级该源文章列表）
   cats.forEach(c=>{
     const items = DATA.filter(d=>d.category===c);
-    const srcs = [...new Set(items.map(d=>d.source))].sort();
+    const metaList = metaCats[c] || [];
+    const srcMeta = {};
+    metaList.forEach(m=>{ srcMeta[m.name]=m; });
+    [...new Set(items.map(d=>d.source))].sort().forEach(s=>{ if(!(s in srcMeta)) srcMeta[s]={name:s,status:"",count:0,error:""}; });
+    const srcs = Object.keys(srcMeta).sort();
     const isOpen = (ui.openCats.has(c) || (ui.filter.type!=="all" && ui.filter.cat===c)) ? "open" : "";
     const isActive = (ui.filter.type==="cat" && ui.filter.cat===c) ? "active" : "";
     let subs = srcs.map(s=>{
+      const m = srcMeta[s] || {};
       const arts = items.filter(d=>d.source===s).sort((a,b)=>(b.published||"").localeCompare(a.published||"")).map(d=>{
         const read=isRead(d.url);
         return `<div class="artrow ${read?'read':''}" data-url="${esc(d.url)}" title="点按标记已读并定位">
@@ -333,14 +346,17 @@ function buildSidebar(){
         </div>`;
       }).join("");
       const sc = items.filter(d=>d.source===s).length;
+      const warn = (m.status && m.status!=="ok");
+      const warnBadge = warn ? `<span class="cnt src-warn" title="${esc(m.error||'最近抓取失败 / 暂无更新')}">⚠️</span>` : "";
+      const emptyNote = (warn && sc===0) ? '<div class="art-empty">⚠️ 最近抓取失败，已保留历史缓存（若有）</div>' : (sc===0?'<div class="art-empty">暂无文章</div>':'');
       const sKey = c+"||"+s;
       const sOpen = ui.openSrcs.has(sKey) ? "open" : "";
       const sAct = (ui.filter.type==="src" && ui.filter.cat===c && ui.filter.src===s) ? "active" : "";
       return `<div class="srcnode ${sOpen} ${sAct}" data-f="src" data-cat="${esc(c)}" data-src="${esc(s)}">
-        <div class="node sub ${sOpen}"><span class="tw">▸</span> ${esc(s)} <span class="cnt src-cnt">${sc}</span></div>
+        <div class="node sub ${sOpen}"><span class="tw">▸</span> ${esc(s)} <span class="cnt src-cnt">${sc}</span>${warnBadge}</div>
         <div class="arts">
           <div class="arts-head"><span>文章 ${sc}</span><span class="mk" data-act="readall" data-cat="${esc(c)}" data-src="${esc(s)}">✓ 全读</span></div>
-          ${arts || '<div class="art-empty">暂无文章</div>'}
+          ${arts || emptyNote}
         </div>
       </div>`;
     }).join("");
@@ -753,11 +769,18 @@ function loadData(arr){
   render();
 }
 function fetchData(){
-  fetch("signals.json?t="+Date.now()).then(r=>{ if(!r.ok) throw 0; return r.json(); })
-    .then(loadData).catch(()=>{
+  Promise.all([
+    fetch("signals.json?t="+Date.now()).then(r=>{ if(!r.ok) throw 0; return r.json(); }).catch(()=>null),
+    fetch("sources_meta.json?t="+Date.now()).then(r=>{ if(!r.ok) throw 0; return r.json(); }).catch(()=>null)
+  ]).then(([arr, meta])=>{
+    META = meta;
+    if(!Array.isArray(arr) || !arr.length){
       document.getElementById("list").innerHTML='<div class="drop" id="drop">⚠️ 无法通过 fetch 读取 signals.json（直接双击打开会被浏览器拦截本地读取）。<br><br>点击此处选择 <b>signals.json</b>，或在项目目录运行 <code>python -m http.server</code> 后访问。</div>';
       const dp=document.getElementById("drop"); if(dp) dp.onclick=()=>document.getElementById("fileIn").click();
-    });
+      return;
+    }
+    loadData(arr);
+  });
 }
 
 // ===== 事件 =====
