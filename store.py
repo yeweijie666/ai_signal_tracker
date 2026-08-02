@@ -87,10 +87,10 @@ def enrich_content(max_workers=10, min_text=200):
     import concurrent.futures as cf
     c = conn()
     cutoff = time.time() - LOOKBACK_DAYS * 86400
-    rows = c.execute("SELECT id,url,text,published FROM items").fetchall()
+    rows = c.execute("SELECT id,url,text,published,content FROM items").fetchall()
     c.close()
     todo, upd_long = [], []
-    for iid, url, text, pub in rows:
+    for iid, url, text, pub, content in rows:
         recent = True
         if pub:
             try:
@@ -100,10 +100,13 @@ def enrich_content(max_workers=10, min_text=200):
                 recent = True
         if not recent or not url:
             continue
+        html_cached = bool(content) and ("<" in content)  # 已缓存 HTML（含图片）则无需重抓
         if text and len(text) >= min_text:
-            upd_long.append((text, iid))   # 已有长正文，直接采用，避免反复入选
+            if not html_cached:
+                upd_long.append((text, iid))   # 已有长正文，直接采用
         else:
-            todo.append((iid, url))        # 短摘要，需联网提取
+            if not html_cached:
+                todo.append((iid, url))        # 短摘要/旧纯文本缓存，需联网提取（产出含图 HTML）
     if upd_long:
         c2 = conn()
         c2.executemany("UPDATE items SET content=? WHERE id=?", upd_long)
