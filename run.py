@@ -10,6 +10,6 @@ if __name__ == "__main__":
     print("=== AI 信源定时爬取开始 ===")
     items = collect_all()
     upsert(items, translate)
-    enrich_content()   # 服务端预提取全文并缓存（Fluent Reader 式：服务端抓取+提取，前端瞬时渲染）
+    enrich_content()
     export_json()
     print(f"=== 完成，耗时 {time.time()-t0:.1f}s ===")
