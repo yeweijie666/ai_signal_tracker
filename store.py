@@ -34,8 +34,7 @@ def upsert(items, translate_fn):
     cutoff = time.time() - LOOKBACK_DAYS * 86400
     for it in items:
         iid = _hid(it)
-        # 读取旧 content，便于“本次无全文时不覆盖历史已提取的内容”
-        cur = c.execute("SELECT id,content FROM items WHERE id=?", (iid,)).fetchone()
+        cur = c.execute("SELECT id FROM items WHERE id=?", (iid,)).fetchone()
         zh_title = it.get("zh_title") or ""
         zh_text = it.get("zh_text") or ""
         # 仅对“近期英文条目”翻译，避免对历史归档浪费翻译额度
@@ -53,22 +52,17 @@ def upsert(items, translate_fn):
                 zh_text = translate_fn(it.get("text", "")) or ""
             except Exception:
                 pass
-        # content：优先用本次抓取带来的 RSS 全文（Fluent Reader 算法核心）；
-        # 若本次无全文(content 为空)，则保留历史已由 enrich 提取的内容，不覆盖清空。
-        old_content = cur[1] if cur else None
-        new_content = (it.get("content") or "").strip()
-        final_content = new_content if new_content else (old_content or "")
         row = (iid, it.get("source", ""), it.get("category", ""), it.get("sub", ""),
                it.get("author", ""), it.get("title", ""), it.get("text", ""),
                it.get("url", ""), it.get("published", ""), it.get("lang", ""),
-               zh_title, zh_text, time.strftime("%Y-%m-%dT%H:%M:%SZ"), final_content)
+               zh_title, zh_text, time.strftime("%Y-%m-%dT%H:%M:%SZ"))
         if cur:
             c.execute("""UPDATE items SET source=?,category=?,sub=?,author=?,title=?,
-                text=?,url=?,published=?,lang=?,zh_title=?,zh_text=?,fetched_at=?,content=? WHERE id=?""",
+                text=?,url=?,published=?,lang=?,zh_title=?,zh_text=?,fetched_at=? WHERE id=?""",
                 row[1:] + (iid,))
             n_upd += 1
         else:
-            c.execute("""INSERT INTO items VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", row)
+            c.execute("""INSERT INTO items VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", row + (None,))
             n_new += 1
     c.commit(); c.close()
     print(f"  入库：新增 {n_new}，更新 {n_upd}")
