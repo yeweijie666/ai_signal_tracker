@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-08-02T09:23:27Z",
+ "generated_at": "2026-08-02T09:39:58Z",
  "categories": {
   "机构报告": [
    {
@@ -119,15 +119,164 @@
     "error": ""
    },
    {
-    "name": "量子位",
-    "sub": "",
-    "status": "failed",
-    "count": 0,
-    "error": "预取失败"
-   },
-   {
     "name": "AITOP100",
     "sub": "",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   }
+  ],
+  "我的订阅": [
+   {
+    "name": "量子位",
+    "sub": "量子位",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   },
+   {
+    "name": "少数派",
+    "sub": "少数派",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   },
+   {
+    "name": "爱范儿",
+    "sub": "爱范儿",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   },
+   {
+    "name": "忽左忽右中国版",
+    "sub": "忽左忽右中国版",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   },
+   {
+    "name": "机核",
+    "sub": "机核",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   },
+   {
+    "name": "虎嗅网",
+    "sub": "虎嗅网",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   },
+   {
+    "name": "今日话题 - 雪球",
+    "sub": "今日话题 - 雪球",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   },
+   {
+    "name": "36氪",
+    "sub": "36氪",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   },
+   {
+    "name": "AI洞察日报 RSS Feed",
+    "sub": "AI洞察日报 RSS Feed",
+    "status": "ok",
+    "count": 5,
+    "error": ""
+   },
+   {
+    "name": "华尔街见闻",
+    "sub": "华尔街见闻",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   },
+   {
+    "name": "BMPI",
+    "sub": "BMPI",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   },
+   {
+    "name": "《联合早报》-国际-即时",
+    "sub": "《联合早报》-国际-即时",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   },
+   {
+    "name": "雪球",
+    "sub": "雪球",
+    "status": "ok",
+    "count": 5,
+    "error": ""
+   },
+   {
+    "name": "第一财经周刊",
+    "sub": "第一财经周刊",
+    "status": "ok",
+    "count": 5,
+    "error": ""
+   },
+   {
+    "name": "iDaily · 每日环球视野",
+    "sub": "iDaily · 每日环球视野",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   },
+   {
+    "name": "历史研习社",
+    "sub": "历史研习社",
+    "status": "ok",
+    "count": 5,
+    "error": ""
+   },
+   {
+    "name": "三联生活周刊",
+    "sub": "三联生活周刊",
+    "status": "ok",
+    "count": 5,
+    "error": ""
+   },
+   {
+    "name": "ONES Piece - 知乎专栏",
+    "sub": "ONES Piece - 知乎专栏",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   },
+   {
+    "name": "FTChinese RSS - All Feed",
+    "sub": "FTChinese RSS - All Feed",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   },
+   {
+    "name": "奇客Solidot–传递最新科技情报",
+    "sub": "奇客Solidot–传递最新科技情报",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   },
+   {
+    "name": "知乎日报",
+    "sub": "知乎日报",
+    "status": "ok",
+    "count": 10,
+    "error": ""
+   },
+   {
+    "name": "律动BlockBeats",
+    "sub": "律动BlockBeats",
     "status": "ok",
     "count": 10,
     "error": ""
