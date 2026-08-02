@@ -127,9 +127,10 @@ function Readability(e,t){if(t&&t.documentElement)e=t,t=arguments[2];else if(!e|
   .orilink:hover{text-decoration:underline}
   /* 右阅读栏 */
   #readerHead{padding:11px 14px 10px;border-bottom:1px solid var(--line);position:relative}
-  .r-close{position:absolute;top:9px;right:10px;border:1px solid var(--line);background:var(--bg);color:var(--sub);border-radius:7px;width:26px;height:26px;cursor:pointer;font-size:13px}
-  .r-full{position:absolute;top:9px;right:42px;border:1px solid var(--line);background:var(--bg);color:var(--sub);border-radius:7px;width:26px;height:26px;cursor:pointer;font-size:14px;line-height:1}
-  .r-title{display:block;font-weight:700;font-size:15px;color:var(--accent2);text-decoration:none;margin-right:30px;line-height:1.4}
+  .r-head-btns{position:absolute;top:9px;right:10px;display:flex;gap:6px}
+  .r-close,.r-full{border:1px solid var(--line);background:var(--bg);color:var(--sub);border-radius:7px;width:28px;height:28px;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0}
+  .r-full:hover,.r-close:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .r-title{display:block;font-weight:700;font-size:15px;color:var(--accent2);text-decoration:none;margin-right:160px;line-height:1.4}
   .r-title:hover{text-decoration:underline}
   .r-meta{font-size:12px;color:var(--sub);margin-top:4px}
   #reader{flex:1;overflow-y:auto;padding:16px 20px;background:var(--card)}
@@ -142,6 +143,10 @@ function Readability(e,t){if(t&&t.documentElement)e=t,t=arguments[2];else if(!e|
   .r-article a{color:var(--accent)}
   .r-article blockquote{margin:10px 0;padding:4px 12px;border-left:3px solid var(--line);color:var(--sub)}
   .r-via{margin-top:16px;font-size:11.5px;color:var(--sub);border-top:1px dashed var(--line);padding-top:8px}
+  #gutter2 #gutterCollapse{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:20px;height:46px;border:1px solid var(--line);background:var(--bg);color:var(--sub);border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;z-index:7;padding:0}
+  #gutter2 #gutterCollapse:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .collapse-hl{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .collapse-hl:hover{filter:brightness(1.08)}
   @media(max-width:760px){.cols{grid-template-columns:1fr}.xgrid{max-height:none}}
   @media(max-width:620px){aside{position:absolute;z-index:30;height:100%;transform:translateX(-100%);transition:transform .2s}aside.show{transform:none}#menuBtn{display:inline-block!important}}
   @media(max-width:900px){#gutter2{display:none}#contentpane{position:absolute;right:0;top:0;bottom:0;width:100%!important;z-index:40;display:none}}
@@ -165,7 +170,7 @@ function Readability(e,t){if(t&&t.documentElement)e=t,t=arguments[2];else if(!e|
       </select>
       <button class="btn" id="zhBtn">译/原 切换</button>
       <button class="btn" id="reloadBtn">↻ 刷新</button>
-      <button class="btn" id="collapseBtn" title="折叠/展开中间文章列表（给阅读区更多空间）">⟨⟨ 折叠列表</button>
+      <button class="btn collapse-hl" id="collapseBtn" title="折叠/展开中间文章列表（给阅读区更多空间）">⟨⟨ 折叠列表</button>
       <button class="btn" id="openBtn">📂 打开</button>
       <input type="file" id="fileIn" accept="application/json" style="display:none">
       <button class="btn" id="proxyBtn" title="设置自托管 CORS 代理，提升正文抓取成功率">⚙ 抓取代理</button>
@@ -178,11 +183,15 @@ function Readability(e,t){if(t&&t.documentElement)e=t,t=arguments[2];else if(!e|
     </div>
   </section>
 
-  <div id="gutter2" title="← 拖动调整阅读栏宽度 →"></div>
+  <div id="gutter2" title="← 拖动调整阅读栏宽度 →"><button id="gutterCollapse" title="折叠/展开中间文章列表">«</button></div>
   <section id="contentpane">
     <div id="readerHead">
-      <button class="r-full" id="readerFull" title="全屏阅读（覆盖中间列表，左菜单保留，按 Esc 退出）">⛶</button>
-      <button class="r-close" id="readerClose" title="关闭阅读栏">✕</button>
+      <div class="r-head-btns">
+        <button class="r-full" id="listToggle" title="折叠/展开中间文章列表（给阅读区更多空间）">⟨ 列表</button>
+        <button class="r-full" id="readerFull" title="全屏阅读（覆盖中间列表，左菜单保留，按 Esc 退出）">⛶</button>
+        <button class="r-full" id="readerTranslate" title="一键翻译正文（中英互译，经你的代理绕开 GFW）">🌐</button>
+        <button class="r-close" id="readerClose" title="关闭阅读栏">✕</button>
+      </div>
       <a class="r-title" href="#" target="_blank" rel="noopener">选择一篇文章</a>
       <div class="r-meta">点击左侧分类树里的某篇文章，或中间列表的标题，这里会展示抓取并去广告后的正文</div>
     </div>
@@ -445,6 +454,7 @@ async function extractArticle(url){
   return null;
 }
 let _readerBusy=0;
+let _curD=null, _curOrigHtml="", _translated=false;
 function showReader(){ const c=document.getElementById("contentpane"); if(c) c.style.display="flex"; }
 function highlightActive(url){
   document.querySelectorAll('#list .item').forEach(it=>it.classList.toggle('active3', it.dataset.url===url));
@@ -455,6 +465,7 @@ async function loadArticle(d){
   markRead(d.url); refreshReadDots();
   const head=document.getElementById("readerHead");
   const reader=document.getElementById("reader");
+  _curD=d;
   const gi=DATA.indexOf(d);
   const el=document.getElementById("art-"+gi); if(el) el.scrollIntoView({block:"nearest"});
   head.querySelector(".r-title").textContent=d.title||"（无标题）";
@@ -463,12 +474,14 @@ async function loadArticle(d){
   // 优先：服务端已预提取并缓存的全文（含图片，瞬时、无需代理、不再报错）
   if(d.content && d.content.trim().length>200){
     reader.innerHTML=`<div class="r-article">${sanitize(d.content)}</div><div class="r-via">内容提取来源：本地预提取（服务端每日缓存，含图片，瞬时加载，无需代理）</div>`;
+    _markOriginal(reader.innerHTML);
     showReader();
     return;
   }
   // 次选：RSS 原文自带的长正文（纯文本，无图片）
   if((d.text||"").length>400){
     reader.innerHTML=`<div class="r-article">${renderText(d.text)}</div><div class="r-via">内容提取来源：RSS 原文摘要（纯文本，无图片）</div>`;
+    _markOriginal(reader.innerHTML);
     showReader();
     return;
   }
@@ -480,10 +493,65 @@ async function loadArticle(d){
   if(res && (res.html||res.text)){
     const bodyHtml = res.html ? res.html : renderText(res.text);
     reader.innerHTML=`<div class="r-article">${bodyHtml}</div><div class="r-via">内容提取来源：${esc(res.via)}</div>`;
+    _markOriginal(reader.innerHTML);
   }else{
     const body=(d.zh_text||d.text||d.zh_title||d.title||"（本地无摘要，且在线抓取失败）");
     reader.innerHTML=`<div class="r-article">${esc(body)}</div><div class="r-via">⚠️ 在线抓取失败，显示本地已抓取内容（${esc(d.source||"")}）。可在右上角「⚙ 抓取代理」填入你自己的代理以提升成功率。</div>`;
+    _markOriginal(reader.innerHTML);
   }
+}
+
+// ===== 一键翻译（浏览器端，经自托管代理绕开 GFW 调 Google 翻译）=====
+function _markOriginal(html){ _curOrigHtml=html; _translated=false; const b=document.getElementById("readerTranslate"); if(b){ b.textContent="🌐"; b.disabled=false; } }
+function stripHtml(h){ const d=document.createElement("div"); d.innerHTML=h||""; return (d.textContent||"").replace(/\s+/g," ").trim(); }
+async function translateChunk(text, to){
+  const gtx="https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl="+encodeURIComponent(to)+"&dt=t&q="+encodeURIComponent(text);
+  for(const mk of buildProxyMakers()){
+    try{
+      const r=await fetch(mk(gtx)); if(!r.ok) continue;
+      const j=await r.json();
+      if(Array.isArray(j) && Array.isArray(j[0])){
+        const out=j[0].map(seg=>seg[0]).join("");
+        if(out) return out;
+      }
+    }catch(e){}
+  }
+  return null;
+}
+async function translateText(text, to){
+  const MAX=4000; const chunks=[]; let buf="";
+  for(const ch of text){ buf+=ch; if(buf.length>=MAX && /[。.!?\n！？]/.test(ch)){ chunks.push(buf); buf=""; } }
+  if(buf) chunks.push(buf);
+  let res="";
+  for(const c of chunks){ const t=await translateChunk(c,to); if(t==null) return null; res+=t; }
+  return res;
+}
+async function doTranslate(){
+  const reader=document.getElementById("reader");
+  const btn=document.getElementById("readerTranslate");
+  if(_translated){ reader.innerHTML=_curOrigHtml; _translated=false; btn.textContent="🌐"; return; }
+  if(!_curD) return;
+  const src=(_curD.content && _curD.content.length>200) ? stripHtml(_curD.content)
+           : (_curD.text || _curD.zh_text || _curD.title || "");
+  if(!src.trim()){ alert("当前文章没有可翻译的正文内容。"); return; }
+  const to=(_curD.lang==="zh") ? "en" : "zh-CN";
+  btn.textContent="⏳"; btn.disabled=true;
+  const saved=reader.innerHTML;
+  reader.innerHTML='<div class="r-loading">⏳ 正在调用翻译服务…</div>';
+  const tr=await translateText(src, to);
+  btn.textContent="🌐"; btn.disabled=false;
+  if(tr==null){
+    reader.innerHTML=saved+'<div class="r-via">⚠️ 翻译失败（很可能是网络/代理问题）。请确认右上角「⚙ 抓取代理」已填写你自己的代理地址（*.workers.dev），它会用来绕开 GFW 访问 Google 翻译。</div>';
+    return;
+  }
+  reader.innerHTML=renderText(tr)+'<div class="r-via">🌐 已翻译为'+(to==="zh-CN"?"中文":"英文")+' · 再点 🌐 恢复原文</div>';
+  _translated=true;
+}
+// 折叠/展开中间文章列表（多处可触发，状态同步）
+function toggleList(){
+  const on=document.body.classList.toggle("list-collapsed");
+  const cb=document.getElementById("collapseBtn"); if(cb) cb.textContent = on ? "⟩⟩ 展开列表" : "⟨⟨ 折叠列表";
+  const lt=document.getElementById("listToggle"); if(lt) lt.textContent = on ? "⟩ 展开列表" : "⟨ 列表";
 }
 
 // 分隔条拖动：sidebar 宽度、contentpane 宽度，宽度持久化
@@ -564,10 +632,10 @@ loadRead();
 initResize();
 document.getElementById("readerClose").onclick=()=>{ document.getElementById("contentpane").style.display="none"; document.body.classList.remove("reader-full"); };
 document.getElementById("readerFull").onclick=()=>{ document.body.classList.toggle("reader-full"); };
-document.getElementById("collapseBtn").onclick=()=>{
-  const on=document.body.classList.toggle("list-collapsed");
-  document.getElementById("collapseBtn").textContent = on ? "⟩⟩ 展开列表" : "⟨⟨ 折叠列表";
-};
+document.getElementById("collapseBtn").onclick=toggleList;
+document.getElementById("listToggle").onclick=toggleList;
+document.getElementById("gutterCollapse").onclick=e=>{ e.stopPropagation(); toggleList(); };
+document.getElementById("readerTranslate").onclick=doTranslate;
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ document.body.classList.remove("reader-full"); } });
 fetchData();
 </script>
