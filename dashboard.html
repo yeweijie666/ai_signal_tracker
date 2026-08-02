@@ -375,8 +375,15 @@ function buildSidebar(){
   document.getElementById("tree").querySelectorAll(".cathead").forEach(n=>n.onclick=(e)=>{
     e.stopPropagation();
     const cat=n.dataset.cat;
-    if(ui.openCats.has(cat)) ui.openCats.delete(cat); else ui.openCats.add(cat);
-    setFilter({type:"cat", cat});
+    // 若本分类当前正激活（作为过滤对象），再次点击=折叠并回到全部；否则展开+过滤
+    const active = (ui.filter.type==="cat" && ui.filter.cat===cat) || (ui.filter.type==="src" && ui.filter.cat===cat);
+    if(active){
+      ui.openCats.delete(cat);
+      setFilter({type:"all"});
+    } else {
+      ui.openCats.add(cat);
+      setFilter({type:"cat", cat});
+    }
   });
   document.getElementById("tree").querySelectorAll(".srcnode").forEach(sn=>{
     sn.onclick=(e)=>{
@@ -388,10 +395,16 @@ function buildSidebar(){
         refreshReadDots();
         return;
       }
-      sn.classList.toggle("open");
       const key=cat+"||"+src;
-      if(sn.classList.contains("open")) ui.openSrcs.add(key); else ui.openSrcs.delete(key);
-      setFilter({type:"src", cat, src});
+      // 若本源当前正激活，再次点击=折叠并回到全部；否则展开+过滤
+      const active = (ui.filter.type==="src" && ui.filter.cat===cat && ui.filter.src===src);
+      if(active){
+        ui.openSrcs.delete(key);
+        setFilter({type:"all"});
+      } else {
+        ui.openSrcs.add(key);
+        setFilter({type:"src", cat, src});
+      }
     };
   });
   document.getElementById("tree").querySelectorAll(".artrow").forEach(r=>{
