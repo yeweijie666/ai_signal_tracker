@@ -114,6 +114,9 @@ function Readability(e,t){if(t&&t.documentElement)e=t,t=arguments[2];else if(!e|
   /* 阅读全屏：右栏覆盖中间列表，左菜单保留 */
   body.reader-full #gutter,body.reader-full #gutter2{display:none}
   body.reader-full #listpane{display:none}
+  body.list-collapsed #listpane{display:none}
+  body.list-collapsed #gutter2{display:none}
+  body.list-collapsed #contentpane{flex:1 1 auto!important;flex-basis:auto!important;min-width:0}
   body.reader-full #contentpane{flex:1 1 auto;flex-basis:auto!important;width:auto!important;border-left:none}
   body.resizing{cursor:col-resize!important;user-select:none!important}
   .item.active3{outline:2px solid var(--accent);outline-offset:-2px}
@@ -162,6 +165,7 @@ function Readability(e,t){if(t&&t.documentElement)e=t,t=arguments[2];else if(!e|
       </select>
       <button class="btn" id="zhBtn">译/原 切换</button>
       <button class="btn" id="reloadBtn">↻ 刷新</button>
+      <button class="btn" id="collapseBtn" title="折叠/展开中间文章列表（给阅读区更多空间）">⟨⟨ 折叠列表</button>
       <button class="btn" id="openBtn">📂 打开</button>
       <input type="file" id="fileIn" accept="application/json" style="display:none">
       <button class="btn" id="proxyBtn" title="设置自托管 CORS 代理，提升正文抓取成功率">⚙ 抓取代理</button>
@@ -456,11 +460,15 @@ async function loadArticle(d){
   head.querySelector(".r-title").textContent=d.title||"（无标题）";
   head.querySelector(".r-title").href=d.url||"#";
   head.querySelector(".r-meta").textContent=`${fmtDate(d.published)} · ${d.source||""} · ${d.category||""}`;
-  // 优先：服务端已预提取并缓存的全文（瞬时、无需代理、不再报错）
-  const full = (d.content && d.content.trim().length>200) ? d.content
-             : ((d.text||"").length>400 ? d.text : null);
-  if(full){
-    reader.innerHTML=`<div class="r-article">${renderText(full)}</div><div class="r-via">内容提取来源：本地预提取（服务端每日缓存，瞬时加载，无需代理）</div>`;
+  // 优先：服务端已预提取并缓存的全文（含图片，瞬时、无需代理、不再报错）
+  if(d.content && d.content.trim().length>200){
+    reader.innerHTML=`<div class="r-article">${sanitize(d.content)}</div><div class="r-via">内容提取来源：本地预提取（服务端每日缓存，含图片，瞬时加载，无需代理）</div>`;
+    showReader();
+    return;
+  }
+  // 次选：RSS 原文自带的长正文（纯文本，无图片）
+  if((d.text||"").length>400){
+    reader.innerHTML=`<div class="r-article">${renderText(d.text)}</div><div class="r-via">内容提取来源：RSS 原文摘要（纯文本，无图片）</div>`;
     showReader();
     return;
   }
@@ -502,7 +510,7 @@ function initResize(){
         document.removeEventListener("mouseup",up);
         document.body.classList.remove("resizing");
         gutter.classList.remove("drag");
-        localStorage.setItem(storeKey, target.style.width);
+        localStorage.setItem(storeKey, target.style.flexBasis);
       }
       document.addEventListener("mousemove",move);
       document.addEventListener("mouseup",up);
@@ -556,6 +564,10 @@ loadRead();
 initResize();
 document.getElementById("readerClose").onclick=()=>{ document.getElementById("contentpane").style.display="none"; document.body.classList.remove("reader-full"); };
 document.getElementById("readerFull").onclick=()=>{ document.body.classList.toggle("reader-full"); };
+document.getElementById("collapseBtn").onclick=()=>{
+  const on=document.body.classList.toggle("list-collapsed");
+  document.getElementById("collapseBtn").textContent = on ? "⟩⟩ 展开列表" : "⟨⟨ 折叠列表";
+};
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ document.body.classList.remove("reader-full"); } });
 fetchData();
 </script>
