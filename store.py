@@ -65,8 +65,7 @@ def upsert(items, translate_fn):
                 row[1:] + (existing_content, iid))
             n_upd += 1
         else:
-            c.execute("""INSERT INTO items(source,category,sub,author,title,text,url,published,lang,zh_title,zh_text,fetched_at,content)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""", row + (None,))
+            c.execute("""INSERT INTO items VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", row + (None,))
             n_new += 1
     c.commit(); c.close()
     print(f"  入库：新增 {n_new}，更新 {n_upd}")
