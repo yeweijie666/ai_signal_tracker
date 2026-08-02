@@ -109,12 +109,12 @@ function Readability(e,t){if(t&&t.documentElement)e=t,t=arguments[2];else if(!e|
   /* 三栏：左菜单(可拖动) / 中列表 / 右阅读(可拖动) */
   #gutter,#gutter2{width:6px;flex:0 0 6px;cursor:col-resize;background:transparent;position:relative;z-index:6;transition:background .15s}
   #gutter:hover,#gutter2:hover,#gutter.drag,#gutter2.drag{background:var(--accent)}
-  #listpane{flex:1 1 auto;min-width:220px;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
-  #contentpane{flex:0 0 560px;display:flex;flex-direction:column;background:var(--card);border-left:1px solid var(--line);overflow:hidden}
+  #listpane{flex:1 1 auto;min-width:200px;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+  #contentpane{flex:0 0 620px;display:flex;flex-direction:column;background:var(--card);border-left:1px solid var(--line);overflow:hidden}
   /* 阅读全屏：右栏覆盖中间列表，左菜单保留 */
   body.reader-full #gutter,body.reader-full #gutter2{display:none}
   body.reader-full #listpane{display:none}
-  body.reader-full #contentpane{flex:1 1 auto;width:auto!important;border-left:none}
+  body.reader-full #contentpane{flex:1 1 auto;flex-basis:auto!important;width:auto!important;border-left:none}
   body.resizing{cursor:col-resize!important;user-select:none!important}
   .item.active3{outline:2px solid var(--accent);outline-offset:-2px}
   .item .title{cursor:pointer}
@@ -482,8 +482,8 @@ async function loadArticle(d){
 function initResize(){
   const sb=document.getElementById("sidebar");
   const cp=document.getElementById("contentpane");
-  const w1=localStorage.getItem("dash_side_w"); if(w1) sb.style.width=w1;
-  const w2=localStorage.getItem("dash_read_w"); if(w2) cp.style.width=w2;
+  const w1=localStorage.getItem("dash_side_w"); if(w1) sb.style.flexBasis=w1;
+  const w2=localStorage.getItem("dash_read_w"); if(w2) cp.style.flexBasis=w2;
   function drag(gutter, target, storeKey, grow){
     gutter.addEventListener("mousedown", e=>{
       e.preventDefault();
@@ -494,8 +494,8 @@ function initResize(){
       function move(ev){
         let dx=ev.clientX-startX;
         let w=grow ? startW+dx : startW-dx;
-        w=Math.max(grow?180:320, Math.min(grow?760:820, w));
-        target.style.width=w+"px";
+        w=Math.max(grow?180:320, Math.min(grow?760:900, w));
+        target.style.flexBasis=w+"px";
       }
       function up(){
         document.removeEventListener("mousemove",move);
