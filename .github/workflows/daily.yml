@@ -35,6 +35,9 @@ jobs:
       - name: Run crawl + translate
         run: python run.py
 
+      - name: Fetch 涨停板分析（同花顺风格）
+        run: python zt_analysis.py
+
       - name: Send daily digest email
         env:
           QQ_EMAIL: ${{ secrets.QQ_EMAIL }}
@@ -46,7 +49,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add signals.json signals.db 2>/dev/null || true
+          git add signals.json signals.db zt_analysis.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "无新数据，跳过提交"
           else
