@@ -3,7 +3,7 @@
 import re, json, time, html, socket
 import requests, feedparser
 from config import (X_BEARER_TOKEN, X_HANDLES, INSTITUTION_FEEDS, PLATFORMS,
-                    CN_FEEDS, NEWSLETTERS, KARPATHY_OPML, MAX_PER_SOURCE)
+                    CN_FEEDS, NEWSLETTERS, RSS_DIGEST_FEEDS, KARPATHY_OPML, MAX_PER_SOURCE)
 from translate import is_chinese
 
 socket.setdefaulttimeout(12)  # 保护 feedparser（无内置超时），避免个别死源卡死
@@ -12,14 +12,13 @@ UA = {"User-Agent": "Mozilla/5.0 (compatible; AISignalTracker/1.0)"}
 SESSION = requests.Session()
 SESSION.headers.update(UA)
 
-def _norm(source, category, sub, author, title, text, url, published, lang=None, content=""):
+def _norm(source, category, sub, author, title, text, url, published, lang=None):
     lang = lang or ("zh" if is_chinese(title or text) else "en")
     return {
         "source": source, "category": category, "sub": sub or "",
         "author": author or "", "title": (title or "").strip(),
         "text": (text or "").strip(), "url": url or "",
         "published": published or "", "lang": lang,
-        "content": (content or "").strip(),
     }
 
 def _iso(dt):
@@ -58,24 +57,10 @@ def fetch_rss(url, name, cat, sub="", limit=None, use_feed_title=False):
                 src = ft
         for e in d.entries[:limit or MAX_PER_SOURCE]:
             pub = e.get("published_parsed") or e.get("updated_parsed")
-            # —— 参照 Fluent Reader 算法：优先使用 RSS 自带的 content:encoded 全文 ——
-            # Fluent Reader 默认直接渲染 item.content（零二次抓取，所以快）；
-            # 仅当源只给摘要时才回退到 summary/description（后续由 enrich 用 Readability 兜底抓原网页）。
-            full = ""
-            ce = e.get("content")
-            if isinstance(ce, list) and ce:
-                full = (ce[0].get("value") or "") if isinstance(ce[0], dict) else str(ce[0])
-            elif isinstance(ce, str):
-                full = ce
-            if not full:
-                full = e.get("summary", "") or e.get("description", "")
-            # content：仅当含 HTML 标签时视为正文 HTML（Fluent Reader 直接渲染 item.content）
-            content = full if ("<" in full) else ""
-            # text：纯文本摘要，用于列表预览 / 翻译降级
-            text = re.sub(r"<[^>]+>", " ", full)
-            text = re.sub(r"\s+", " ", text).strip()
+            body = e.get("summary", "") or e.get("description", "")
+            body = re.sub("<[^>]+>", " ", body)
             out.append(_norm(src, cat, sub, "", e.get("title", ""),
-                             text, e.get("link", ""), _iso(pub), content=content))
+                             body, e.get("link", ""), _iso(pub)))
     except Exception as ex:
         print(f"  [rss] {name} 失败: {ex}")
     return out
@@ -86,15 +71,12 @@ def fetch_hn(url, name, cat):
     try:
         r = SESSION.get(url, timeout=15); r.raise_for_status()
         for h in r.json().get("hits", [])[:MAX_PER_SOURCE]:
-            raw = h.get("story_text") or h.get("comment_text") or ""
-            # 参照 Fluent Reader：含 HTML 的正文保留为 content，纯文本则留空由 enrich 处理
-            content = raw if ("<" in raw) else ""
-            txt = re.sub(r"<[^>]+>", " ", raw)
-            txt = re.sub(r"\s+", " ", txt).strip()
+            txt = h.get("story_text") or h.get("comment_text") or ""
+            txt = re.sub("<[^>]+>", " ", txt)
             out.append(_norm(name, cat, "", h.get("author", ""),
                              h.get("title", ""), txt,
                              h.get("url") or f"https://news.ycombinator.com/item?id={h.get('objectID')}",
-                             h.get("created_at", ""), "en", content=content))
+                             h.get("created_at", ""), "en"))
     except Exception as ex:
         print(f"  [hn] {name} 失败: {ex}")
     return out
@@ -232,6 +214,9 @@ def collect_all():
     print("== 抓取 Newsletter ==")
     for name, cat, url, typ in NEWSLETTERS:
         items += fetch_rss(url, name, cat)
+    print("== 抓取 每日RSS综合（原 fluent-tools 日报信源）==")
+    for name, cat, sub, url, typ in RSS_DIGEST_FEEDS:
+        items += fetch_rss(url, name, cat, sub)
     print("== 抓取 X ==")
     items += fetch_x()
     print("== 抓取 Karpathy RSS 清单 ==")
