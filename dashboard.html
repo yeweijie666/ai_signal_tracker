@@ -116,7 +116,14 @@
   .r-translate{position:absolute;top:9px;right:78px;border:1px solid var(--line);background:var(--bg);color:var(--sub);border-radius:7px;height:26px;padding:0 9px;cursor:pointer;font-size:12px;white-space:nowrap}
   .r-translate:hover{color:var(--accent);border-color:var(--accent)}
   .r-translate:disabled{opacity:.55;cursor:default}
-  .r-title{display:block;font-weight:700;font-size:15px;color:var(--accent2);text-decoration:none;margin-right:30px;line-height:1.4}
+  .r-open{position:absolute;top:9px;right:140px;border:1px solid var(--line);background:var(--bg);color:var(--sub);border-radius:7px;height:26px;padding:0 9px;cursor:pointer;font-size:12px;white-space:nowrap}
+  .r-open:hover{color:var(--accent);border-color:var(--accent)}
+  .r-listtoggle{position:absolute;top:9px;right:202px;border:1px solid var(--line);background:var(--bg);color:var(--sub);border-radius:7px;height:26px;padding:0 9px;cursor:pointer;font-size:12px;white-space:nowrap}
+  .r-listtoggle:hover{color:var(--accent);border-color:var(--accent)}
+  body.list-collapsed #listpane{display:none}
+  body.list-collapsed #gutter{display:none}
+  .r-frame{width:100%;height:100%;border:0;background:#fff;display:block}
+  .r-title{display:block;font-weight:700;font-size:15px;color:var(--accent2);text-decoration:none;margin-right:270px;line-height:1.4}
   .r-title:hover{text-decoration:underline}
   .r-meta{font-size:12px;color:var(--sub);margin-top:4px}
   #reader{flex:1;overflow-y:auto;padding:16px 20px;background:var(--card)}
@@ -152,6 +159,7 @@
       </select>
       <button class="btn" id="zhBtn">译/原 切换</button>
       <button class="btn" id="reloadBtn">↻ 刷新</button>
+      <button class="btn" id="collapseBtn">⟨⟨ 折叠</button>
       <button class="btn" id="openBtn">📂 打开</button>
       <input type="file" id="fileIn" accept="application/json" style="display:none">
       <button class="theme-btn" id="themeBtn">🌙 深色</button>
@@ -169,6 +177,8 @@
       <button class="r-close" id="readerClose" title="关闭阅读栏">✕</button>
       <button class="r-gear" id="readerProxy" title="设置抓取代理（默认用你自己的 Cloudflare Worker）">⚙</button>
       <button class="r-translate" id="readerTranslate" title="一键翻译为简体中文（再点恢复原文）">🌐 翻译</button>
+      <button class="r-open" id="readerOpen" title="在第3模块内嵌打开文章原网页">🔗 网页</button>
+      <button class="r-listtoggle" id="listToggle" title="折叠/展开中间列表">⟨ 列表</button>
       <a class="r-title" href="#" target="_blank" rel="noopener">选择一篇文章</a>
       <div class="r-meta">点击左侧分类树里的某篇文章，或中间列表的标题，这里会展示抓取并去广告后的正文</div>
     </div>
@@ -481,13 +491,18 @@ async function translateChunk(text){
   return out;
 }
 let _translating=false;
+function hashStr(s){ let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))>>>0; return h.toString(36); }
+function applyTranslated(reader,art,joined,btn){
+  const html=joined.split(/\n{1,}/).map(p=>`<p>${esc(p.trim())}</p>`).join("")
+    +`<div class="r-via">已译为简体中文（🌐 一键翻译，再次点击恢复原文）</div>`;
+  art.innerHTML=html; reader.dataset.translated="1"; btn.textContent="↺ 原文";
+}
 async function doTranslate(){
   if(_translating) return;
   const reader=document.getElementById("reader");
   const art=reader.querySelector(".r-article");
   const btn=document.getElementById("readerTranslate");
   if(!art){ alert("请先打开一篇文章再翻译。"); return; }
-  // 已翻译 -> 恢复原文
   if(reader.dataset.translated==="1"){
     art.innerHTML=reader.dataset.origHtml||"";
     reader.dataset.translated="0"; btn.textContent="🌐 翻译"; return;
@@ -495,6 +510,15 @@ async function doTranslate(){
   reader.dataset.origHtml=art.innerHTML;
   const plain=(art.innerText||art.textContent||"").replace(/[ \t]+\n/g,"\n").trim();
   if(!plain){ alert("当前正文无可翻译的文本。"); return; }
+  // 命中本地译文缓存：同一正文不再打代理
+  const cacheKey="tr_"+hashStr(plain);
+  const cached=localStorage.getItem(cacheKey);
+  if(cached){ applyTranslated(reader,art,cached,btn); return; }
+  // 代理限流中：直接提示，避免反复请求放大 429
+  if(_proxyRateLimitedUntil>Date.now()){
+    const left=Math.ceil((_proxyRateLimitedUntil-Date.now())/1000);
+    alert("抓取/翻译代理暂时限流（429），请 "+left+" 秒后再试，或检查 ⚙ 代理设置。"); return;
+  }
   const chunks=splitForTranslate(plain,4000);
   _translating=true; btn.disabled=true; btn.textContent="⏳ 翻译中…";
   try{
@@ -503,16 +527,38 @@ async function doTranslate(){
       btn.textContent=`⏳ 翻译中 ${i+1}/${chunks.length}…`;
       parts.push(await translateChunk(chunks[i]));
     }
-    const html=parts.join("\n\n").split(/\n{1,}/).map(p=>`<p>${esc(p.trim())}</p>`).join("")
-      +`<div class="r-via">已译为简体中文（🌐 一键翻译，再次点击恢复原文）</div>`;
-    art.innerHTML=html;
-    reader.dataset.translated="1"; btn.textContent="↺ 原文";
+    const joined=parts.join("\n\n");
+    try{ localStorage.setItem(cacheKey, joined); }catch(e){}
+    applyTranslated(reader,art,joined,btn);
   }catch(e){
-    alert("翻译失败："+e.message+"\n请检查 ⚙ 代理设置（需能访问 Google 翻译）。");
+    const msg=e.message||String(e);
+    if(/429/.test(msg)){ _proxyRateLimitedUntil=Date.now()+5*60e3; alert("翻译代理返回 429（限流），请 5 分钟后再试，或检查 ⚙ 代理设置。"); }
+    else alert("翻译失败："+msg+"\n请检查 ⚙ 代理设置（需能访问 Google 翻译）。");
     btn.textContent="🌐 翻译";
   }finally{
     _translating=false; btn.disabled=false;
   }
+}
+// 在第3模块内嵌打开文章原网页（针对抓取为空的源，直接看原站）
+let _frameOpen=false;
+function openInFrame(){
+  const reader=document.getElementById("reader");
+  const url=reader.dataset.curUrl;
+  if(!url){ alert("请先打开一篇文章再打开网页。"); return; }
+  const btn=document.getElementById("readerOpen");
+  if(_frameOpen){
+    reader.innerHTML=reader.dataset.framePrev||"";
+    _frameOpen=false; btn.textContent="🔗 网页"; return;
+  }
+  reader.dataset.framePrev=reader.innerHTML;
+  _frameOpen=true; btn.textContent="✕ 关闭网页";
+  reader.innerHTML=`<iframe class="r-frame" src="${esc(url)}" referrerpolicy="no-referrer" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" onload="this.dataset.ok=1"></iframe><div class="r-via">正在内嵌打开原网页…若长时间空白，多半是该站点禁止内嵌（X-Frame-Options），请点右上角标题 ↗ 在新标签打开。</div>`;
+}
+// 折叠/展开中间列表（第二模块）
+function toggleList(){
+  const collapsed=document.body.classList.toggle("list-collapsed");
+  document.getElementById("listToggle").textContent=collapsed?"列表 ⟩":"⟨ 列表";
+  document.getElementById("collapseBtn").textContent=collapsed?"⟨⟨ 展开":"⟨⟨ 折叠";
 }
 let _readerBusy=0;
 function showReader(){ const c=document.getElementById("contentpane"); if(c) c.style.display="flex"; }
@@ -530,6 +576,7 @@ async function loadArticle(d){
   head.querySelector(".r-title").textContent=d.title||"（无标题）";
   head.querySelector(".r-title").href=d.url||"#";
   head.querySelector(".r-meta").textContent=`${fmtDate(d.published)} · ${d.source||""} · ${d.category||""}`;
+  reader.dataset.curUrl=d.url;
   // 优先使用服务端已抓取并清洗过的正文（含图片），无需再走浏览器代理
   if(d.content && (d.content||"").trim().length>120){
     reader.innerHTML=`<div class="r-article">${sanitize(d.content)}</div><div class="r-via">内容提取来源：服务端全文抓取（已缓存）</div>`;
@@ -546,7 +593,7 @@ async function loadArticle(d){
     reader.innerHTML=`<div class="r-article">${bodyHtml}</div><div class="r-via">内容提取来源：${esc(res.via)}</div>`;
   }else{
     const body=(d.zh_text||d.text||d.zh_title||d.title||"（本地无摘要，且在线抓取失败）");
-    reader.innerHTML=`<div class="r-article">${esc(body)}</div><div class="r-via">⚠️ 在线抓取失败，显示本地已抓取内容（${esc(d.source||"")}）。多为目标站反爬/动态加载（如 Twitch），或代理临时限流，已自动跳过代理。</div>`;
+    reader.innerHTML=`<div class="r-article">${esc(body)}</div><div class="r-via">⚠️ 在线抓取失败，显示本地已抓取内容（${esc(d.source||"")}）。多为目标站反爬/动态加载（如 Twitch），或代理临时限流；可点右上角 🔗 网页 直接在内嵌打开原页面。</div>`;
   }
 }
 
@@ -635,6 +682,9 @@ document.getElementById("readerProxy").onclick=()=>{
   alert("代理已保存："+base+"\n下次抓取生效（当前文章重新点击即可）。");
 };
 document.getElementById("readerTranslate").onclick=doTranslate;
+document.getElementById("readerOpen").onclick=openInFrame;
+document.getElementById("listToggle").onclick=toggleList;
+document.getElementById("collapseBtn").onclick=toggleList;
 fetchData();
 </script>
 </body>
