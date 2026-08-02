@@ -15,6 +15,7 @@ Electron 的 main 进程（相当于「服务端」），完全没有浏览器 C
 import re
 import html
 import requests
+from urllib.parse import urljoin
 
 UA = {
     "User-Agent": (
@@ -33,8 +34,61 @@ _WS_RE = re.compile(r"[ \t]+")
 _BLANK_RE = re.compile(r"\n{3,}")
 
 
-def _html_to_text(h):
-    """把抽取出的正文 HTML 转成干净的纯文本（保留段落换行）。"""
+def _sanitize_html(h):
+    """只剔除危险标签/属性（script/style/iframe/on*），保留 <img>/<p>/<a> 等正文结构，
+    文章配图由此得以显示。"""
+    h = re.sub(r"<script[\s\S]*?</script>", "", h, flags=re.I)
+    h = re.sub(r"<style[\s\S]*?</style>", "", h, flags=re.I)
+    h = re.sub(r"<iframe[\s\S]*?</iframe>", "", h, flags=re.I)
+    h = re.sub(r"<noscript[\s\S]*?</noscript>", "", h, flags=re.I)
+    h = re.sub(r"\s+on\w+\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)", "", h, flags=re.I)
+    h = re.sub(r"javascript:", "", h, flags=re.I)
+    return h
+
+
+def _abs_url(base, u):
+    if not u:
+        return u
+    u = u.strip()
+    if u.lower().startswith(("http://", "https://")):
+        return u
+    if u.startswith("//"):
+        return "https:" + u
+    try:
+        return urljoin(base, u)
+    except Exception:
+        return u
+
+
+def _rewrite_srcset(base, s):
+    parts = []
+    for seg in s.split(","):
+        seg = seg.strip()
+        if not seg:
+            continue
+        sp = seg.split()
+        if sp:
+            sp[0] = _abs_url(base, sp[0])
+        parts.append(" ".join(sp))
+    return ", ".join(parts)
+
+
+def _fix_imgs(h, base):
+    """把正文里的相对图片地址改写为绝对地址，保证跨域也能加载。"""
+    def fix(m):
+        tag = m.group(0)
+        tag = re.sub(r'src\s*=\s*("([^"]*)"|\'([^\']*)\'|([^\s>]+))',
+                     lambda mm: 'src="%s"' % _abs_url(base, mm.group(2) or mm.group(3) or mm.group(4) or ""),
+                     tag, count=1)
+        tag = re.sub(r'srcset\s*=\s*("([^"]*)"|\'([^\']*)\')',
+                     lambda mm: 'srcset="%s"' % _rewrite_srcset(base, mm.group(2) or mm.group(3) or ""),
+                     tag, count=1)
+        return tag
+    return re.sub(r"<img\b[^>]*>", fix, h)
+
+
+def html_to_text(h):
+    """把正文 HTML 转成干净的纯文本（仅 Readability 不可用时的兜底 / 调试用）。"""
     h = _BLOCK_RE.sub("\n", h)
     h = _TAG_RE.sub("", h)
     h = html.unescape(h)
@@ -44,7 +98,11 @@ def _html_to_text(h):
 
 
 def extract(url, timeout=12):
-    """抓取 url 并用 Readability 抽取正文，返回纯文本；任何失败返回 ''。"""
+    """抓取 url 并用 Readability 抽取正文，返回「含图片的 HTML」；任何失败返回 ''。
+
+    与旧版（返回纯文本）的区别：保留 <img>/<figure> 等结构，并把相对图片地址改写为
+    绝对地址，让前端无需代理即可直接显示文章配图。
+    """
     if not url or not url.startswith(("http://", "https://")):
         return ""
     try:
@@ -60,14 +118,14 @@ def extract(url, timeout=12):
             return ""
         try:
             from readability.readability import Document
-            summary = Document(raw).summary()  # 抽取后的正文 HTML
-            text = _html_to_text(summary)
+            summary = Document(raw).summary()  # 抽取后的正文 HTML（含图片）
         except Exception:
-            # Readability 未安装时退化为「去标签的全文」，保证至少有内容
-            text = _html_to_text(raw)
-        if len(text) < 200:
+            summary = raw  # Readability 未安装时退化为「去标签的全文」
+        summary = _fix_imgs(summary, url)
+        summary = _sanitize_html(summary)
+        if len(summary) < 200:
             return ""  # 太短视为抽取失败
-        return text
+        return summary
     except Exception as ex:
         print(f"    [extract] 失败 {str(url)[:90]}: {ex}")
         return ""
