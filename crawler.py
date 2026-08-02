@@ -12,6 +12,10 @@ UA = {"User-Agent": "Mozilla/5.0 (compatible; AISignalTracker/1.0)"}
 SESSION = requests.Session()
 SESSION.headers.update(UA)
 
+# 每个信源本趟抓取的状态（ok/failed/empty + 错误原因 + 条数），用于生成 sources_meta.json，
+# 让看板常驻展示所有已配置源（含抓取失败的），从根源避免“源悄悄消失”。
+FEED_STATUS = {}
+
 def _norm(source, category, sub, author, title, text, url, published, lang=None, content=""):
     lang = lang or ("zh" if is_chinese(title or text) else "en")
     return {
@@ -53,10 +57,14 @@ def _get_text(url, name, timeout=25, retries=3):
     return ""
 
 # ---------- arXiv ----------
-def fetch_arxiv(url, name, cat):
+def fetch_arxiv(url, name, cat, track=True):
     out = []
+    if track:
+        FEED_STATUS[name] = {"status": "pending", "error": "", "count": 0}
     raw = _get_text(url, name)
     if not raw:
+        if track:
+            FEED_STATUS[name] = {"status": "failed", "error": "预取失败", "count": 0}
         return out
     try:
         d = feedparser.parse(raw)
@@ -67,21 +75,35 @@ def fetch_arxiv(url, name, cat):
                              _iso(pub), "en"))
     except Exception as ex:
         print(f"  [arxiv] {name} 失败: {ex}")
+        if track:
+            FEED_STATUS[name] = {"status": "failed", "error": str(ex), "count": 0}
+        return out
+    if track:
+        FEED_STATUS[name] = {"status": "ok" if out else "empty", "error": "", "count": len(out)}
     return out
 
 # ---------- 通用 RSS ----------
-def fetch_rss(url, name, cat, sub="", limit=None, use_feed_title=False):
+def fetch_rss(url, name, cat, sub="", limit=None, use_feed_title=False, track=True):
     out = []
+    if track:
+        FEED_STATUS[name] = {"status": "pending", "error": "", "count": 0}
+    # Google News 等聚合源条目多，限制条数（也降低翻译额度消耗）
+    if "news.google.com" in url:
+        limit = min(limit or MAX_PER_SOURCE, 15)
     raw = _get_text(url, name)
     if not raw:
+        if track:
+            FEED_STATUS[name] = {"status": "failed", "error": "预取失败", "count": 0}
         return out
     try:
         d = feedparser.parse(raw)
     except Exception as ex:
-        print(f"  [rss] {name} 解析失败(源跳过): {ex}")
+        if track:
+            FEED_STATUS[name] = {"status": "failed", "error": f"解析异常:{ex}", "count": 0}
         return out
     if d.bozo and not d.entries:
-        print(f"  [rss] {name} 解析异常(跳过): {getattr(d, 'bozo_exception', '')}")
+        if track:
+            FEED_STATUS[name] = {"status": "failed", "error": f"解析异常:{getattr(d, 'bozo_exception', '')}", "count": 0}
         return out
     # 每个订阅源用真实 feed 标题做源名（用于看板按订阅源分别展开）；
     # 仅在显式要求且能拿到标题时覆盖，避免把机构/平台的中文别名丢掉。
@@ -105,9 +127,9 @@ def fetch_rss(url, name, cat, sub="", limit=None, use_feed_title=False):
                 full = (ce[0].get("value") or "") if isinstance(ce[0], dict) else str(ce[0])
             elif isinstance(ce, str):
                 full = ce
-            if not full:
-                full = e.get("summary", "") or e.get("description", "")
-            # content：含 HTML 标签才视为正文 HTML（Fluent Reader 直接渲染 item.content）
+            # content：仅用 RSS 自带的 content:encoded 全文（Fluent Reader 算法核心）；
+            # 不再把 description/summary 当正文塞进 content，避免 Google News 等摘要型源
+            # 把“相关新闻列表”当成文章正文。无正文时由 enrich 用 Readability 兜底抓原网页。
             content = full if ("<" in full) else ""
             # text：用于列表预览 + 服务端翻译，保持“短”以免全文翻译拖垮工作流/触发限流；
             # 优先取摘要纯文本，无摘要才回退正文纯文本并截断到 300 字。
@@ -124,6 +146,8 @@ def fetch_rss(url, name, cat, sub="", limit=None, use_feed_title=False):
         except Exception as ex:
             print(f"  [rss] {name} 单条解析跳过: {ex}")
             continue
+    if track:
+        FEED_STATUS[name] = {"status": "ok" if out else "empty", "error": "", "count": len(out)}
     return out
 
 # ---------- Hacker News (Algolia) ----------
@@ -330,9 +354,25 @@ def collect_all():
     items += fetch_x()
     print("== 抓取 Karpathy RSS 清单 ==")
     for title, fx in expand_opml():
-        items += fetch_rss(fx, title, "RSS订阅", sub="Karpathy清单", limit=8)
+        items += fetch_rss(fx, title, "RSS订阅", sub="Karpathy清单", limit=8, track=False)
+    # —— 构建信源状态（供 sources_meta.json / 看板常驻展示）——
+    got = {}
+    for it in items:
+        got[it["source"]] = got.get(it["source"], 0) + 1
+    status = {}
+    def _reg(name, cat, sub):
+        s = FEED_STATUS.get(name) or {"status": "empty" if got.get(name, 0) == 0 else "ok", "error": "", "count": got.get(name, 0)}
+        status[name] = {"status": s.get("status"), "error": s.get("error", ""), "count": got.get(name, 0), "cat": cat, "sub": sub}
+    for name, cat, sub, url, typ in INSTITUTION_FEEDS:
+        _reg(name, cat, sub)
+    for name, cat, url, typ in PLATFORMS:
+        _reg(name, cat, "")
+    for name, cat, url, typ in CN_FEEDS:
+        _reg(name, cat, "")
+    for name, cat, url, typ in NEWSLETTERS:
+        _reg(name, cat, "")
     print(f"== 共获取 {len(items)} 条 ==")
-    return items
+    return items, status
 
 if __name__ == "__main__":
     collect_all()
