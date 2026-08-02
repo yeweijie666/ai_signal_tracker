@@ -2,7 +2,7 @@
 """编排：抓取 -> 翻译 -> 入库 -> 导出 JSON。每日定时运行此脚本。"""
 import time
 from crawler import collect_all
-from store import upsert, export_json
+from store import upsert, export_json, enrich_content
 from translate import translate
 
 if __name__ == "__main__":
