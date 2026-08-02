@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """各信源抓取与归一化。返回统一结构的条目列表（不含 id/翻译，由 run.py 补全）。"""
 import re, json, time, html, socket, os
+import urllib.parse
 import requests, feedparser
 from config import (X_BEARER_TOKEN, X_HANDLES, INSTITUTION_FEEDS, PLATFORMS,
-                    CN_FEEDS, NEWSLETTERS, KARPATHY_OPML, MAX_PER_SOURCE)
+                    CN_FEEDS, NEWSLETTERS, KARPATHY_OPML, MAX_PER_SOURCE,
+                    USER_OPML, USER_FEED_CAT)
 from translate import is_chinese
 
 socket.setdefaulttimeout(12)  # 保护 feedparser（无内置超时），避免个别死源卡死
@@ -55,6 +57,51 @@ def _get_text(url, name, timeout=25, retries=3):
             time.sleep(2)
     print(f"  [feed] {name} 预取失败({last})，跳过该源")
     return ""
+
+# ----------------------------------------------------------------------------
+# 用户 Fluent Reader 订阅（已提交 fluent_reader.opml，离线可读）
+# 策略：先直连原站 RSS；云端 runner（美国 IP）常拦截中文/反爬站点，
+#       此时自动回退到 Google News RSS（全球可达）聚合该品牌最新动态，保证源可见。
+# ----------------------------------------------------------------------------
+def _gn_url(query, lang="zh"):
+    q = urllib.parse.quote(query)
+    if lang == "zh":
+        return f"https://news.google.com/rss/search?q={q}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans"
+    return f"https://news.google.com/rss/search?q={q}&hl=en-US&gl=US&ceid=US:en"
+
+def _detect_lang(text):
+    return "zh" if is_chinese(text or "") else "en"
+
+def expand_user_opml():
+    """解析已提交的 fluent_reader.opml，返回 [(title, url, lang)]。离线可读，不依赖网络。"""
+    if not os.path.exists(USER_OPML):
+        print(f"  [opml] 未找到 {USER_OPML}，跳过用户订阅")
+        return []
+    try:
+        import xml.etree.ElementTree as ET
+        root = ET.parse(USER_OPML).getroot()
+        body = root.find("body")
+        out = []
+        for o in body.iter("outline"):
+            url = o.get("xmlUrl") or o.get("url")
+            title = o.get("text") or o.get("title") or ""
+            if url and title:
+                out.append((title, url, _detect_lang(title)))
+        print(f"  [opml] 解析 fluent_reader.opml：{len(out)} 个用户订阅")
+        return out
+    except Exception as ex:
+        print(f"  [opml] 解析失败：{ex}")
+        return []
+
+def fetch_user_feed(title, url, lang="zh", limit=10):
+    """抓用户订阅：先直连原站 RSS，失败（0 条/异常）则回退 Google News。"""
+    items = fetch_rss(url, title, USER_FEED_CAT, sub=title, limit=limit, track=True)
+    if items:
+        return items
+    # 直连失败 -> Google News 兜底（全球可达，云端也能抓到）
+    gn = _gn_url(title, lang)
+    print(f"  [user] {title} 直连失败，回退 Google News")
+    return fetch_rss(gn, title, USER_FEED_CAT, sub=title + "(Google News)", limit=limit, track=True)
 
 # ---------- arXiv ----------
 def fetch_arxiv(url, name, cat, track=True):
@@ -355,6 +402,9 @@ def collect_all():
     print("== 抓取 Karpathy RSS 清单 ==")
     for title, fx in expand_opml():
         items += fetch_rss(fx, title, "RSS订阅", sub="Karpathy清单", limit=8, track=False)
+    print("== 抓取 我的订阅 (Fluent Reader OPML) ==")
+    for title, url, lang in expand_user_opml():
+        items += fetch_user_feed(title, url, lang, limit=10)
     # —— 构建信源状态（供 sources_meta.json / 看板常驻展示）——
     got = {}
     for it in items:
@@ -371,6 +421,8 @@ def collect_all():
         _reg(name, cat, "")
     for name, cat, url, typ in NEWSLETTERS:
         _reg(name, cat, "")
+    for title, url, lang in expand_user_opml():
+        _reg(title, USER_FEED_CAT, title)
     print(f"== 共获取 {len(items)} 条 ==")
     return items, status
 
