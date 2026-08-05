@@ -27,6 +27,8 @@
   .node{padding:7px 10px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:7px;user-select:none;font-size:13px}
   .node:hover{background:var(--hover)}
   .node.active{background:var(--sel);color:var(--accent2);font-weight:600}
+  .node.daily{font-weight:700;color:var(--cRss)}
+  .node.daily.active{background:var(--cRss);color:#fff}
   .node .tw{display:inline-block;width:12px;color:var(--sub);transition:transform .15s;font-size:10px}
   .node.open .tw{transform:rotate(90deg)}
   .cnt{margin-left:auto;font-size:11px;color:var(--sub);background:var(--bg);border-radius:10px;padding:1px 7px}
@@ -266,6 +268,18 @@ const CAT_ORDER = ["硬核平台","机构报告","我的订阅","中文资讯","
 const CAT_COLOR = {"X账号":"b-X账号","机构报告":"b-机构报告","硬核平台":"b-硬核平台",
                    "中文资讯":"b-中文资讯","RSS订阅":"b-RSS订阅","Newsletter":"b-Newsletter"};
 
+// ===== 日报类：跨 RSS 源聚合“每日/每周摘要”型文章（独立于分类树，作为横向视图）=====
+// 命中强信号词即归入日报类；英文 daily 单独出现时排除“日常工具/习惯”等误报上下文。
+const _DAILY_POS = /(日报|周报|早报|晚报|晨报|午报|周刊|每日|简报|速览|周览|一周|weekly|this week|weekly update|the batch|tldr|roundup|morning brief|morning brew|daily digest|daily brief|daily news|daily update|daily ai|ai daily|import ai|daily briefing|daily report|newsletter digest)/i;
+const _DAILY_EXC = /\bdaily\s+(progress|game|practice|practices|estimation|estimate|quiz|habit|routine|goal|goals|challenge|exercise|prompt|tool|app|assistant|bot|planner|tracker|reminder|journal|log|summary)\b/i;
+function isDailyReport(d){
+  if(!d || d.category==="X账号") return false;            // X 推文不计入日报类
+  const t = d.title||"";                                  // 仅按文章标题识别，避免源名带“日报”的整份报纸 feed 被误纳
+  if(_DAILY_POS.test(t)) return true;
+  if(/\bdaily\b/i.test(t) && !_DAILY_EXC.test(t)) return true;
+  return false;
+}
+
 let DATA = [];
 let META = null;   // 信源状态（sources_meta.json）：保证看板常驻展示所有已配置源，失败也可见
 let ui = {q:"", lang:"", showZh:true, filter:{type:"all"}, sortDesc:true, openCats:new Set(), openSrcs:new Set()};
@@ -313,6 +327,11 @@ function buildSidebar(){
   let cats = ordered;
 
   let h = `<div class="node all ${ui.filter.type==="all"?"active":""}" data-f="all">📋 全部信源 <span class="cnt">${DATA.length}</span></div>`;
+
+  // 日报类（横向聚合视图，独立于分类树）
+  const dailyCnt = DATA.filter(isDailyReport).length;
+  const dailyActive = ui.filter.type==="daily" ? "active" : "";
+  h += `<div class="node daily ${dailyActive}" data-f="daily" title="每日/每周摘要型文章，跨 RSS 源聚合">📰 日报类 <span class="cnt">${dailyCnt}</span></div>`;
 
   // X 头像墙（顶部，默认展开）
   h += `<div class="xsec open">
@@ -372,6 +391,10 @@ function buildSidebar(){
 
   // 事件绑定
   document.getElementById("tree").querySelectorAll(".node.all").forEach(n=>n.onclick=()=>setFilter({type:"all"}));
+  document.getElementById("tree").querySelectorAll(".node.daily").forEach(n=>n.onclick=()=>{
+    if(ui.filter.type==="daily") setFilter({type:"all"});
+    else setFilter({type:"daily"});
+  });
   document.getElementById("tree").querySelectorAll(".cathead").forEach(n=>n.onclick=(e)=>{
     e.stopPropagation();
     const cat=n.dataset.cat;
@@ -420,6 +443,7 @@ function setFilter(f){
   let crumb="全部信源";
   if(f.type==="cat") crumb = `分类：${f.cat}（点击其下订阅源可只看单一来源）`;
   if(f.type==="src") crumb = `订阅源：${f.src}`;
+  if(f.type==="daily") crumb = "📰 日报类（每日/每周摘要型文章，跨 RSS 源聚合）";
   document.getElementById("crumb").textContent = crumb;
   buildSidebar();
   render();
@@ -429,6 +453,7 @@ function setFilter(f){
 function render(){
   const q=ui.q.toLowerCase();
   let list = DATA.filter(d=>{
+    if(ui.filter.type==="daily" && !isDailyReport(d)) return false;
     if(ui.filter.type==="cat" && d.category!==ui.filter.cat) return false;
     if(ui.filter.type==="src" && !(d.category===ui.filter.cat && d.source===ui.filter.src)) return false;
     if(ui.lang && d.lang!==ui.lang) return false;
