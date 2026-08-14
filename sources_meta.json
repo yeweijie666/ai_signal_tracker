@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-08-13T06:11:39Z",
+ "generated_at": "2026-08-14T06:05:07Z",
  "categories": {
   "机构报告": [
    {
@@ -19,9 +19,9 @@
    {
     "name": "红杉资本 Sequoia",
     "sub": "投行/咨询",
-    "status": "ok",
-    "count": 10,
-    "error": ""
+    "status": "failed",
+    "count": 0,
+    "error": "预取失败"
    },
    {
     "name": "CB Insights",
@@ -122,7 +122,7 @@
     "name": "AITOP100",
     "sub": "",
     "status": "ok",
-    "count": 10,
+    "count": 7,
     "error": ""
    }
   ],
