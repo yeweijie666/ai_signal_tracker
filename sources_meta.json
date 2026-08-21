@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-08-20T03:34:57Z",
+ "generated_at": "2026-08-21T03:46:02Z",
  "categories": {
   "机构报告": [
    {
@@ -85,7 +85,7 @@
     "name": "GitHub Trending (llm)",
     "sub": "",
     "status": "ok",
-    "count": 13,
+    "count": 17,
     "error": ""
    },
    {
@@ -122,7 +122,7 @@
     "name": "AITOP100",
     "sub": "",
     "status": "ok",
-    "count": 10,
+    "count": 9,
     "error": ""
    }
   ],
