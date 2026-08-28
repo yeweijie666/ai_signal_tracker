@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-08-26T03:48:15Z",
+ "generated_at": "2026-08-28T06:34:09Z",
  "categories": {
   "机构报告": [
    {
@@ -48,7 +48,7 @@
     "name": "FutureThink 未来智库",
     "sub": "宏观趋势",
     "status": "ok",
-    "count": 15,
+    "count": 10,
     "error": ""
    }
   ],
@@ -85,7 +85,7 @@
     "name": "GitHub Trending (llm)",
     "sub": "",
     "status": "ok",
-    "count": 16,
+    "count": 19,
     "error": ""
    },
    {
@@ -122,7 +122,7 @@
     "name": "AITOP100",
     "sub": "",
     "status": "ok",
-    "count": 6,
+    "count": 9,
     "error": ""
    }
   ],
@@ -187,7 +187,7 @@
     "name": "AI洞察日报 RSS Feed",
     "sub": "AI洞察日报 RSS Feed",
     "status": "ok",
-    "count": 6,
+    "count": 7,
     "error": ""
    },
    {
