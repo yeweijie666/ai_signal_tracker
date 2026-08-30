@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-08-29T00:43:17Z",
+ "generated_at": "2026-08-30T00:43:39Z",
  "categories": {
   "机构报告": [
    {
@@ -85,7 +85,7 @@
     "name": "GitHub Trending (llm)",
     "sub": "",
     "status": "ok",
-    "count": 20,
+    "count": 19,
     "error": ""
    },
    {
@@ -166,7 +166,7 @@
     "name": "虎嗅网",
     "sub": "虎嗅网",
     "status": "ok",
-    "count": 5,
+    "count": 6,
     "error": ""
    },
    {
