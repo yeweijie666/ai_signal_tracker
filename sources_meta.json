@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-12T05:01:34Z",
+ "generated_at": "2026-09-13T05:19:57Z",
  "categories": {
   "机构报告": [
    {
@@ -63,9 +63,9 @@
    {
     "name": "arXiv cs.AI",
     "sub": "",
-    "status": "ok",
-    "count": 30,
-    "error": ""
+    "status": "failed",
+    "count": 0,
+    "error": "预取失败"
    },
    {
     "name": "Hugging Face Blog",
@@ -105,8 +105,8 @@
    {
     "name": "Reddit r/LocalLLaMA",
     "sub": "",
-    "status": "ok",
-    "count": 25,
+    "status": "empty",
+    "count": 0,
     "error": ""
    }
   ],
@@ -187,7 +187,7 @@
     "name": "AI洞察日报 RSS Feed",
     "sub": "AI洞察日报 RSS Feed",
     "status": "ok",
-    "count": 5,
+    "count": 6,
     "error": ""
    },
    {
