@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-13T05:19:57Z",
+ "generated_at": "2026-09-14T05:30:32Z",
  "categories": {
   "机构报告": [
    {
@@ -56,16 +56,16 @@
    {
     "name": "arXiv cs.CL",
     "sub": "",
-    "status": "ok",
-    "count": 30,
-    "error": ""
+    "status": "failed",
+    "count": 0,
+    "error": "预取失败"
    },
    {
     "name": "arXiv cs.AI",
     "sub": "",
-    "status": "failed",
-    "count": 0,
-    "error": "预取失败"
+    "status": "ok",
+    "count": 30,
+    "error": ""
    },
    {
     "name": "Hugging Face Blog",
@@ -85,7 +85,7 @@
     "name": "GitHub Trending (llm)",
     "sub": "",
     "status": "ok",
-    "count": 16,
+    "count": 19,
     "error": ""
    },
    {
