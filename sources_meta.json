@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-14T05:30:32Z",
+ "generated_at": "2026-09-15T05:21:21Z",
  "categories": {
   "机构报告": [
    {
@@ -56,9 +56,9 @@
    {
     "name": "arXiv cs.CL",
     "sub": "",
-    "status": "failed",
-    "count": 0,
-    "error": "预取失败"
+    "status": "ok",
+    "count": 30,
+    "error": ""
    },
    {
     "name": "arXiv cs.AI",
@@ -85,7 +85,7 @@
     "name": "GitHub Trending (llm)",
     "sub": "",
     "status": "ok",
-    "count": 19,
+    "count": 20,
     "error": ""
    },
    {
