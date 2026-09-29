@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-28T05:53:55Z",
+ "generated_at": "2026-09-29T06:11:09Z",
  "categories": {
   "机构报告": [
    {
@@ -85,7 +85,7 @@
     "name": "GitHub Trending (llm)",
     "sub": "",
     "status": "ok",
-    "count": 9,
+    "count": 8,
     "error": ""
    },
    {
@@ -173,7 +173,7 @@
     "name": "今日话题 - 雪球",
     "sub": "今日话题 - 雪球",
     "status": "ok",
-    "count": 8,
+    "count": 9,
     "error": ""
    },
    {
