@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-12T06:34:41Z",
+ "generated_at": "2026-10-13T07:11:37Z",
  "categories": {
   "机构报告": [
    {
@@ -85,7 +85,7 @@
     "name": "GitHub Trending (llm)",
     "sub": "",
     "status": "ok",
-    "count": 8,
+    "count": 9,
     "error": ""
    },
    {
@@ -105,8 +105,8 @@
    {
     "name": "Reddit r/LocalLLaMA",
     "sub": "",
-    "status": "ok",
-    "count": 25,
+    "status": "empty",
+    "count": 0,
     "error": ""
    }
   ],
