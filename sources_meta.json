@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-05T07:22:51Z",
+ "generated_at": "2026-11-06T07:21:04Z",
  "categories": {
   "机构报告": [
    {
@@ -85,7 +85,7 @@
     "name": "GitHub Trending (llm)",
     "sub": "",
     "status": "ok",
-    "count": 16,
+    "count": 15,
     "error": ""
    },
    {
@@ -121,8 +121,8 @@
    {
     "name": "AITOP100",
     "sub": "",
-    "status": "empty",
-    "count": 0,
+    "status": "ok",
+    "count": 5,
     "error": ""
    }
   ],
@@ -287,7 +287,7 @@
     "name": "The Batch",
     "sub": "",
     "status": "ok",
-    "count": 12,
+    "count": 11,
     "error": ""
    },
    {
