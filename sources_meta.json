@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-27T09:08:05Z",
+ "generated_at": "2026-11-28T08:26:21Z",
  "categories": {
   "机构报告": [
    {
@@ -122,7 +122,7 @@
     "name": "AITOP100",
     "sub": "",
     "status": "ok",
-    "count": 9,
+    "count": 10,
     "error": ""
    }
   ],
@@ -187,7 +187,7 @@
     "name": "AI洞察日报 RSS Feed",
     "sub": "AI洞察日报 RSS Feed",
     "status": "ok",
-    "count": 4,
+    "count": 5,
     "error": ""
    },
    {
